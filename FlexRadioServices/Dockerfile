@@ -4,9 +4,13 @@ EXPOSE 80
 EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
+COPY .nuget/NuGet/NuGet.Config /root/.nuget/NuGet
+COPY .nuget/packages /root/packages
+
+RUN ls -lA /root/.nuget
 WORKDIR /src
 COPY ["FlexRadioServices/FlexRadioServices.csproj", "FlexRadioServices/"]
-RUN dotnet restore "FlexRadioServices/FlexRadioServices.csproj"
+RUN dotnet restore --ignore-failed-sources "FlexRadioServices/FlexRadioServices.csproj"
 COPY . .
 WORKDIR "/src/FlexRadioServices"
 RUN dotnet build "FlexRadioServices.csproj" -c Release -o /app/build

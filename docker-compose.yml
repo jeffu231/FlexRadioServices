@@ -1,0 +1,23 @@
+################################################################################
+# Flex Radio Services
+################################################################################
+# docker-compose -f docker-compose.yml -p flex-radio-services up
+################################################################################
+version: "3.7"
+
+services:
+  flex-radio-services:
+    image: flex-radio-api
+    restart: unless-stopped
+    #networks:
+    #  - k9kld
+    build: 
+      context: https://github.com/jeffu231/FlexRadioServices.git
+      dockerfile: FlexRadioServices/Dockerfile
+    #labels:
+    #  - "traefik.enable=true"
+    #  - "traefik.http.routers.flex-radio-services-api.rule=Host(`docker01.home.kb9kld.org`) && (PathPrefix(`/api/frs/`))"
+
+#networks:
+#  k9kld:
+#    external: true

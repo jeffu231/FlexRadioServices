@@ -5,6 +5,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <RootNamespace>FlexRadioServices</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
@@ -19,11 +20,6 @@
       <PackageReference Include="Microsoft.AspNetCore.Mvc.Versioning" Version="5.0.0" />
       <PackageReference Include="Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer" Version="5.0.0" />
       <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Models\" />
-      <Folder Include="Services\" />
     </ItemGroup>
 
 </Project>

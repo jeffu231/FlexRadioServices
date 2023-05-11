@@ -1,0 +1,9 @@
+services:
+  flex-radio-services:
+    build: 
+      context: $HOME/Dev/FlexRadioServices
+    ports:
+      - "8081:80"
+      - "4991-4992:4991-4992/udp"
+     
+ 
