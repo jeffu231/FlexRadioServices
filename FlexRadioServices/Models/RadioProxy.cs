@@ -4,10 +4,10 @@ using Newtonsoft.Json;
 
 namespace FlexRadioServices.Models;
 
-public sealed class FlexRadio
+public sealed class RadioProxy
 {
     private readonly Radio _radio;
-    public FlexRadio(Radio radio)
+    public RadioProxy(Radio radio)
     {
         _radio = radio;
     }

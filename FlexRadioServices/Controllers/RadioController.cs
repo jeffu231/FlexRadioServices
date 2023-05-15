@@ -16,14 +16,6 @@ public class RadioController: ControllerBase
         _logger = logger;
         _activeState = activeState;
     }
-
-    // [Route("{id}")]
-    // [HttpGet]
-    // [MapToApiVersion("1.0")]
-    // public async Task<IActionResult> Get(string id, [FromQuery] string param = null)
-    // {
-    //     
-    // }
     
     [Route("radios")]
     [HttpGet]
@@ -33,28 +25,7 @@ public class RadioController: ControllerBase
         return await Task.FromResult(Ok(_activeState.Radios.Values));
     }
     
-    [Route("activeradio")]
-    [HttpGet]
-    [MapToApiVersion("1.0")]
-    public IActionResult ActiveRadio()
-    {
-        if (_activeState.ActiveRadio != null && _activeState.Radios.TryGetValue(_activeState.ActiveRadio.Serial, out var radio))
-        {
-            return Ok(radio);
-        }
-
-        return NotFound("No Active Radio");
-    }
-    
-    [Route("clients")]
-    [HttpGet]
-    [MapToApiVersion("1.0")]
-    public IActionResult Clients()
-    {
-        return Ok(_activeState.Clients);
-    }
-    
-    [Route("connect/{id}")]
+    [Route("radios/{id}/connect")]
     [HttpPost]
     [MapToApiVersion("1.0")]
     public IActionResult Connect(string id)
@@ -72,17 +43,20 @@ public class RadioController: ControllerBase
         return Ok("Connected");
     }
     
-    [Route("disconnect")]
+    [Route("radios/{id}/disconnect")]
     [HttpPost]
     [MapToApiVersion("1.0")]
-    public IActionResult Disconnect()
+    public IActionResult Disconnect(string id)
     {
-        if (_activeState.ActiveRadio == null)
+        if (string.IsNullOrEmpty(id)) return BadRequest("Invalid Id");
+        if (_activeState.Radios.TryGetValue(id.Trim(), out var radio))
         {
-            return Ok("Not connected");
+            if (!radio.Radio.Connected)
+            {
+                return Ok("Not Connected");
+            }
+            _activeState.DisconnectRadio(radio.Radio);
         }
-       
-        _activeState.DisconnectRadio(_activeState.ActiveRadio);
         
         return Ok("Disconnected");
     }

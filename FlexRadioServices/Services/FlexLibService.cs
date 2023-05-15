@@ -41,7 +41,7 @@ namespace FlexRadioServices.Services
         {
             _logger.LogDebug("Radio added {RadioNickname}:{RadioSerial}", radio.Nickname, radio.Serial);
 
-            var flexRadio = new FlexRadio(radio);
+            var flexRadio = new RadioProxy(radio);
             if(!_activeState.Radios.TryAdd(radio.Serial, flexRadio))
             {
                 _activeState.Radios[radio.Serial] = flexRadio;

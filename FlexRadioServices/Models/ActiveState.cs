@@ -14,11 +14,11 @@ public class ActiveState
     {
         _logger = logger;
         Clients = new ConcurrentBag<RadioClient>();
-        Radios = new ConcurrentDictionary<string, FlexRadio>();
+        Radios = new ConcurrentDictionary<string, RadioProxy>();
     }
     public Radio? ActiveRadio { get; set; }
 
-    public ConcurrentDictionary<string, FlexRadio> Radios { get; private set; }
+    public ConcurrentDictionary<string, RadioProxy> Radios { get; private set; }
 
     public ConcurrentBag<RadioClient> Clients { get; private set; }
 
