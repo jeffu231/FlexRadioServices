@@ -34,6 +34,10 @@ namespace FlexRadioServices
 
             app.UseAuthorization();
 
+            app.UseExceptionHandler();
+            
+            app.UseStatusCodePages();
+
             app.MapControllers();
             
             app.Run();
@@ -44,6 +48,7 @@ namespace FlexRadioServices
             services.AddSingleton(Settings);
             services.AddSingleton<ActiveState>();
             services.AddHostedService<FlexLibService>();
+            services.AddProblemDetails();
             
             services.AddControllers(o =>
             {

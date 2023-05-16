@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Flex.Smoothlake.FlexLib;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -14,50 +15,131 @@ public class SliceProxy
     [JsonIgnore]
     internal Slice Slice => _flexSlice;
 
-    public bool IsTransmitSlice => _flexSlice.IsTransmitSlice;
+    public bool IsTransmitSlice
+    {
+        get => _flexSlice.IsTransmitSlice;
+        set => _flexSlice.IsTransmitSlice = value;
+    }
     
-    public bool Active => _flexSlice.Active;
+    public bool Active
+    {
+        get => _flexSlice.Active;
+        set => _flexSlice.Active = value;
+    }
 
     public int Index => _flexSlice.Index;
 
+    [RegularExpression(@"^[A-E]$", ErrorMessage = "Slice letter must be A - E")]
     public string Letter => _flexSlice.Letter;
 
-    public double Freq => _flexSlice.Freq;
+    public double Freq
+    {
+        get => _flexSlice.Freq;
+        set => _flexSlice.Freq = value;
+    }
 
-    public int Step => _flexSlice.TuneStep;
+    public int Step
+    {
+        get => _flexSlice.TuneStep;
+        set => _flexSlice.TuneStep = value;
+    }
+
+    public string Mode
+    {
+        get => _flexSlice.DemodMode ?? string.Empty;
+        set => _flexSlice.DemodMode = value;
+    }
     
-    public string Mode => _flexSlice.DemodMode ?? string.Empty;
+    public bool NROn
+    {
+        get => _flexSlice.NROn;
+        set => _flexSlice.NROn = value;
+    }
 
-    public bool NrOn => _flexSlice.NROn;
+    public bool NBOn
+    {
+        get => _flexSlice.NBOn;
+        set => _flexSlice.NBOn = value;
+    }
 
-    public bool NbOn => _flexSlice.NBOn;
+    public bool WNBOn
+    {
+        get => _flexSlice.WNBOn;
+        set => _flexSlice.WNBOn = value;
+    }
 
-    public bool WNBOn => _flexSlice.WNBOn;
+    public bool ANFOn
+    {
+        get => _flexSlice.ANFOn;
+        set => _flexSlice.ANFOn = value;
+    }
 
-    public bool ANFOn => _flexSlice.ANFOn;
+    public bool APFOn
+    {
+        get => _flexSlice.APFOn;
+        set => _flexSlice.APFOn = value;
+    }
 
-    public bool APFOn => _flexSlice.APFOn;
+    public int NrLevel
+    {
+        get => _flexSlice.NRLevel;
+        set => _flexSlice.NRLevel = value;
+    }
 
-    public int NrLevel => _flexSlice.NRLevel;
-    
-    public int NbLevel => _flexSlice.NBLevel;
+    public int NbLevel
+    {
+        get => _flexSlice.NBLevel;
+        set => _flexSlice.NBLevel = value;
+    }
 
-    public int WNBLevel => _flexSlice.WNBLevel;
+    public int WNBLevel
+    {
+        get => _flexSlice.WNBLevel;
+        set => _flexSlice.WNBLevel = value;
+    }
 
-    public int ANFLevel => _flexSlice.ANFLevel;
+    public int ANFLevel
+    {
+        get => _flexSlice.ANFLevel;
+        set => _flexSlice.ANFLevel = value;
+    }
 
-    public int APFLevel => _flexSlice.APFLevel;
+    public int APFLevel
+    {
+        get => _flexSlice.APFLevel;
+        set => _flexSlice.APFLevel = value;
+    }
 
-    public bool Mute => _flexSlice.Mute;
+    public bool Mute
+    {
+        get => _flexSlice.Mute;
+        set => _flexSlice.Mute = value;
+    }
 
-    public int AudioGain => _flexSlice.AudioGain;
+    public int AudioGain
+    {
+        get => _flexSlice.AudioGain;
+        set => _flexSlice.AudioGain = value;
+    }
 
-    public int AudioPan => _flexSlice.AudioPan;
+    public int AudioPan
+    {
+        get => _flexSlice.AudioPan;
+        set => _flexSlice.AudioPan = value;
+    }
 
     [JsonConverter(typeof(StringEnumConverter))]
-    public AGCMode AGCMode => _flexSlice.AGCMode;
+    public AGCMode AGCMode
+    {
+        get => _flexSlice.AGCMode;
+        set => _flexSlice.AGCMode = value;
+    }
 
-    public int AGCOffLevel => _flexSlice.AGCOffLevel;
+    public int AGCOffLevel
+    {
+        get => _flexSlice.AGCOffLevel;
+        set => _flexSlice.AGCOffLevel = value;
+    }
     // {
     //   get
     //   {
@@ -67,41 +149,109 @@ public class SliceProxy
     //   }
     // }
 
-    public int AGCThreshold => _flexSlice.AGCThreshold;
+    public int AGCThreshold
+    {
+        get => _flexSlice.AGCThreshold;
+        set => _flexSlice.AGCThreshold = value;
+    }
 
-    public bool DiversityOn => _flexSlice.DiversityOn;
+    public bool DiversityOn
+    {
+        get => _flexSlice.DiversityOn;
+        set => _flexSlice.DiversityOn = value;
+    }
 
-    public bool Lock => _flexSlice.Lock;
+    public bool Lock
+    {
+        get => _flexSlice.Lock;
+        set => _flexSlice.Lock = value;
+    }
 
-    public bool RecordOn => _flexSlice.RecordOn;
+    public bool RecordOn
+    {
+        get => _flexSlice.RecordOn;
+        set => _flexSlice.RecordOn = value;
+    }
 
-    public bool PlayOn => _flexSlice.PlayOn;
+    public bool PlayOn
+    {
+        get => _flexSlice.PlayOn;
+        set => _flexSlice.PlayOn = value;
+    }
 
-    public bool XITOn => _flexSlice.XITOn;
+    public bool XITOn
+    {
+        get => _flexSlice.XITOn;
+        set => _flexSlice.XITOn = value;
+    }
 
-    public bool RITOn => _flexSlice.RITOn;
+    public bool RITOn
+    {
+        get => _flexSlice.RITOn;
+        set => _flexSlice.RITOn = value;
+    }
 
-    public int XITFreq => _flexSlice.XITFreq;
+    public int XITFreq
+    {
+        get => _flexSlice.XITFreq;
+        set => _flexSlice.XITFreq = value;
+    }
 
-    public int RITFREQ => _flexSlice.RITFreq;
-    
+    public int RITFREQ
+    {
+        get => _flexSlice.RITFreq;
+        set => _flexSlice.RITFreq = value;
+    }
+
     public string FilterWidth => Math.Abs(_flexSlice.FilterHigh - _flexSlice.FilterLow).ToString();
 
-    public int FilterHigh => _flexSlice.FilterHigh;
+    public int FilterHigh
+    {
+        get => _flexSlice.FilterHigh;
+        set => _flexSlice.FilterHigh = value;
+    }
 
-    public int FilterLow => _flexSlice.FilterLow;
+    public int FilterLow
+    {
+        get => _flexSlice.FilterLow;
+        set => _flexSlice.FilterLow = value;
+    }
 
-    public int RFGain => _flexSlice.Panadapter.RFGain;
+    public int RFGain
+    {
+        get => _flexSlice.Panadapter.RFGain;
+        set => _flexSlice.Panadapter.RFGain = value;
+    }
 
-    public string RXAnt => _flexSlice.RXAnt;
+    public string RXAnt
+    {
+        get => _flexSlice.RXAnt;
+        set => _flexSlice.RXAnt = value;
+    }
 
-    public string TXAnt => _flexSlice.TXAnt;
+    public string TXAnt
+    {
+        get => _flexSlice.TXAnt;
+        set => _flexSlice.TXAnt = value;
+    }
 
-    public double Pan => _flexSlice.Panadapter.Bandwidth * 1000.0;
+    public double Pan
+    {
+        get => _flexSlice.Panadapter.Bandwidth * 1000.0;
+        set => _flexSlice.Panadapter.Bandwidth = value / 1000;
+    }
 
-    public string Band => _flexSlice.Panadapter.Band;
+    public string Band
+    {
+        get => _flexSlice.Panadapter.Band;
+        set => _flexSlice.Panadapter.Band = value;
+    }
 
-    public string XVTR => _flexSlice.Panadapter.XVTR;
+    public string XVTR
+    {
+        get => _flexSlice.Panadapter.XVTR;
+        set => _flexSlice.Panadapter.XVTR = value;
+    }
     // {
     //   get
     //   {
@@ -113,5 +263,9 @@ public class SliceProxy
     //   }
     // }
 
-    public int DAXChannel => this._flexSlice.DAXChannel;
+    public int DAXChannel
+    {
+        get => this._flexSlice.DAXChannel;
+        set => this._flexSlice.DAXChannel = value;
+    }
 }

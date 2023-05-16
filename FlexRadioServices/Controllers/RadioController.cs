@@ -1,4 +1,7 @@
+using FlexRadioServices.Attributes;
 using FlexRadioServices.Models;
+using FlexRadioServices.Utils;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FlexRadioServices.Controllers;
@@ -17,38 +20,34 @@ public class RadioController: ControllerBase
         _activeState = activeState;
     }
     
-    [Route("radios")]
-    [HttpGet]
+    [HttpGet("radios")]
     [MapToApiVersion("1.0")]
     public async Task<IActionResult> Radios()
     {
         return await Task.FromResult(Ok(_activeState.Radios.Values));
     }
     
-    [Route("radios/{id}/connect")]
-    [HttpPost]
+    [HttpPost("radios/{id}/connect")]
     [MapToApiVersion("1.0")]
     public IActionResult Connect(string id)
     {
-        if (string.IsNullOrEmpty(id)) return BadRequest("Invalid Id");
         if (_activeState.Radios.TryGetValue(id.Trim(), out var radio))
         {
-            if (_activeState.ActiveRadio != null && _activeState.ActiveRadio.Serial.Equals(id.Trim()))
+            if (radio.Radio.Connected)
             {
                 return Ok("Already Connected");
             }
             _activeState.ConnectToRadio(radio.Radio);
-            
+            return Ok("Connected");
         }
-        return Ok("Connected");
+        
+        return Problem($"Radio {id} not found.", statusCode: 404);
     }
     
-    [Route("radios/{id}/disconnect")]
-    [HttpPost]
+    [HttpPost("radios/{id}/disconnect")]
     [MapToApiVersion("1.0")]
     public IActionResult Disconnect(string id)
     {
-        if (string.IsNullOrEmpty(id)) return BadRequest("Invalid Id");
         if (_activeState.Radios.TryGetValue(id.Trim(), out var radio))
         {
             if (!radio.Radio.Connected)
@@ -56,8 +55,63 @@ public class RadioController: ControllerBase
                 return Ok("Not Connected");
             }
             _activeState.DisconnectRadio(radio.Radio);
+            return Ok("Disconnected");
         }
         
-        return Ok("Disconnected");
+        return Problem($"Radio {id} not found.", statusCode: 404);
+    }
+    
+    [HttpGet("radios/{id}/slices")]
+    [MapToApiVersion("1.0")]
+    public IActionResult Slices(string id)
+    {
+        if (_activeState.Radios.TryGetValue(id, out var radioProxy))
+        {
+            var slices = radioProxy.Radio.SliceList.Select(s => new SliceProxy(s));
+            return Ok(slices);
+        }
+
+        return Problem($"Radio {id} not found.", statusCode: 404);
+    }
+
+    [HttpPatch("radios/{id}/slices/{letter}")]
+    public IActionResult PatchSlice(string id, [SliceLetter] string letter, 
+        [FromBody] JsonPatchDocument<SliceProxy> slicePatch)
+    {
+        if (_activeState.Radios.TryGetValue(id, out var radioProxy))
+        {
+            var slice = radioProxy.Radio.SliceList.Where(s => s.Letter.Equals(letter.ToUpper()))
+                .Select(s => new SliceProxy(s)).FirstOrDefault();
+            if (slice != null)
+            {
+                slicePatch.ApplyToSafely(slice, ModelState);
+                if (!ModelState.IsValid) return ValidationProblem(ModelState);
+                return Ok(slice);
+            }
+            
+            return Problem($"Slice {letter} not found.", statusCode: 404);
+        }
+
+        return Problem("Radio {id} not found", statusCode:404);
+
+    }
+    
+    [HttpGet("radios/{id}/slices/{letter}")]
+    public IActionResult Slice(string id, [SliceLetter] string letter)
+    {
+        if (_activeState.Radios.TryGetValue(id, out var radioProxy))
+        {
+            var slice = radioProxy.Radio.SliceList.Where(s => s.Letter.Equals(letter.ToUpper()))
+                .Select(s => new SliceProxy(s)).FirstOrDefault();
+            if (slice != null)
+            {
+                return Ok(slice);
+            }
+
+            return Problem($"Slice {letter} not found.", statusCode:404);
+        }
+
+        return Problem("Radio {id} not found", statusCode:404);
+
     }
 }

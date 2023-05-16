@@ -7,7 +7,7 @@ namespace FlexRadioServices.Models;
 
 public class ActiveState
 {
-    private uint _boundClientHandle = 0;
+    //private uint _boundClientHandle = 0;
     private readonly ILogger<ActiveState> _logger;
 
     public ActiveState(ILogger<ActiveState> logger)
@@ -16,29 +16,18 @@ public class ActiveState
         Clients = new ConcurrentBag<RadioClient>();
         Radios = new ConcurrentDictionary<string, RadioProxy>();
     }
-    public Radio? ActiveRadio { get; set; }
-
+    
     public ConcurrentDictionary<string, RadioProxy> Radios { get; private set; }
 
     public ConcurrentBag<RadioClient> Clients { get; private set; }
 
     public void ConnectToRadio(Radio radio)
     {
-        if (ActiveRadio != null && ActiveRadio == radio)
-        {
-            return;
-        }
-        
-        if (ActiveRadio != null)
-        {
-            DisconnectRadio(ActiveRadio);
-        }
-        
-        radio.PropertyChanged += ActiveRadioOnPropertyChanged;
-        radio.SliceAdded += ActiveRadioOnSliceAdded;
-        radio.SliceRemoved += ActiveRadioOnSliceRemoved;
-        radio.GUIClientAdded += ActiveRadioOnGUIClientAdded;
-        radio.GUIClientRemoved += ActiveRadioOnGUIClientRemoved;
+        radio.PropertyChanged += RadioOnPropertyChanged;
+        radio.SliceAdded += RadioOnSliceAdded;
+        radio.SliceRemoved += RadioOnSliceRemoved;
+        radio.GUIClientAdded += RadioOnGUIClientAdded;
+        radio.GUIClientRemoved += RadioOnGUIClientRemoved;
         
         if (radio.Connected) return;
         
@@ -49,8 +38,7 @@ public class ActiveState
             _logger.LogError("Couldn't connect to Radio");
             return;
         }
-
-        ActiveRadio = radio;
+        
         _logger.LogDebug("Connected!");
         
         Clients.Clear();
@@ -65,11 +53,11 @@ public class ActiveState
 
     public void DisconnectRadio(Radio radio)
     {
-        radio.PropertyChanged -= ActiveRadioOnPropertyChanged;
-        radio.SliceAdded -= ActiveRadioOnSliceAdded;
-        radio.SliceRemoved -= ActiveRadioOnSliceRemoved;
-        radio.GUIClientAdded -= ActiveRadioOnGUIClientAdded;
-        radio.GUIClientRemoved -= ActiveRadioOnGUIClientRemoved;
+        radio.PropertyChanged -= RadioOnPropertyChanged;
+        radio.SliceAdded -= RadioOnSliceAdded;
+        radio.SliceRemoved -= RadioOnSliceRemoved;
+        radio.GUIClientAdded -= RadioOnGUIClientAdded;
+        radio.GUIClientRemoved -= RadioOnGUIClientRemoved;
         
         radio.Disconnect();
         
@@ -78,66 +66,68 @@ public class ActiveState
         Clients.Clear();
     }
 
-    private void ActiveRadioOnGUIClientRemoved(GUIClient guiClient)
+    private void RadioOnGUIClientRemoved(GUIClient guiClient)
     {
         
         
     }
 
-    private void ActiveRadioOnGUIClientAdded(GUIClient guiClient)
+    private void RadioOnGUIClientAdded(GUIClient guiClient)
     {
         
         
     }
 
 
-    private void ActiveRadioOnSliceRemoved(Slice slc)
+    private void RadioOnSliceRemoved(Slice slc)
     {
         RemoveSliceListeners(slc);
     }
 
-    private void ActiveRadioOnSliceAdded(Slice slc)
+    private void RadioOnSliceAdded(Slice slc)
     {
         AddSliceListeners(slc);
     }
 
-    private void ActiveRadioOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void RadioOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is @"PersistenceLoaded" && ActiveRadio != null)
-        {
-            ActiveRadio.PropertyChanged -= ActiveRadioOnPropertyChanged;
-            //Ready = true;
-            ConfigureListeners();
-        }
+        //sender is a Radio
+        //_logger.LogDebug($"Radio property changed sender is Radio {sender}", sender is Radio);
+        // if (e.PropertyName is @"PersistenceLoaded" && ActiveRadio != null)
+        // {
+        //    // ActiveRadio.PropertyChanged -= RadioOnPropertyChanged;
+        //     //Ready = true;
+        //     ConfigureListeners();
+        // }
     }
 
     private void ConfigureListeners()
     {
-        if (ActiveRadio != null && ActiveRadio.Connected)
-        {
-            lock (ActiveRadio.SliceList)
-            {
-                foreach (Slice slc in ActiveRadio.SliceList)
-                {
-                    AddSliceListeners(slc);
-                }
-            }
-        }
+        // if (ActiveRadio != null && ActiveRadio.Connected)
+        // {
+        //     lock (ActiveRadio.SliceList)
+        //     {
+        //         foreach (Slice slc in ActiveRadio.SliceList)
+        //         {
+        //             AddSliceListeners(slc);
+        //         }
+        //     }
+        // }
     }
 
     private void AddSliceListeners(Slice slc)
     {
-        if (ActiveRadio?.BoundClientID != null)
-        {
-            if (slc.ClientHandle == _boundClientHandle)
-            {
-                slc.PropertyChanged += SliceOnPropertyChanged;
-            }
-        }
-        else
-        {
-            slc.PropertyChanged += SliceOnPropertyChanged;
-        }
+        // if (ActiveRadio?.BoundClientID != null)
+        // {
+        //     if (slc.ClientHandle == _boundClientHandle)
+        //     {
+        //         slc.PropertyChanged += SliceOnPropertyChanged;
+        //     }
+        // }
+        // else
+        // {
+        //     slc.PropertyChanged += SliceOnPropertyChanged;
+        // }
     }
 
     private void RemoveSliceListeners(Slice slc)
@@ -177,7 +167,8 @@ public class ActiveState
     /// <returns>SliceInfo</returns>
     public VfoInfo? ActiveSliceInfo()
     {
-        return CreateSliceInfo(ActiveRadio?.ActiveSlice);
+        //return CreateSliceInfo(ActiveRadio?.ActiveSlice);
+        return null;
     }
 
     /// <summary>
@@ -186,27 +177,27 @@ public class ActiveState
     /// <returns>SliceInfo</returns>
     public VfoInfo? TransmitSliceInfo()
     {
-        if (ActiveRadio != null)
-            lock (ActiveRadio.SliceList)
-            {
-                foreach (Slice slc in ActiveRadio.SliceList)
-                {
-                    if (ActiveRadio.BoundClientID != null)
-                    {
-                        if (slc.IsTransmitSlice && slc.ClientHandle == _boundClientHandle)
-                        {
-                            return CreateSliceInfo(slc);
-                        }
-                    }
-                    else
-                    {
-                        if (slc.IsTransmitSlice)
-                        {
-                            return CreateSliceInfo(slc);
-                        }
-                    }
-                }
-            }
+        // if (ActiveRadio != null)
+        //     lock (ActiveRadio.SliceList)
+        //     {
+        //         foreach (Slice slc in ActiveRadio.SliceList)
+        //         {
+        //             if (ActiveRadio.BoundClientID != null)
+        //             {
+        //                 if (slc.IsTransmitSlice && slc.ClientHandle == _boundClientHandle)
+        //                 {
+        //                     return CreateSliceInfo(slc);
+        //                 }
+        //             }
+        //             else
+        //             {
+        //                 if (slc.IsTransmitSlice)
+        //                 {
+        //                     return CreateSliceInfo(slc);
+        //                 }
+        //             }
+        //         }
+        //     }
 
         return null;
     }
