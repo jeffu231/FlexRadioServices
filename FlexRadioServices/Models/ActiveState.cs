@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using System.ComponentModel;
+using System.Globalization;
 using Flex.Smoothlake.FlexLib;
 using FlexRadioServices.Events;
+using FlexRadioServices.Services;
 
 namespace FlexRadioServices.Models;
 
@@ -9,12 +11,14 @@ public class ActiveState
 {
     //private uint _boundClientHandle = 0;
     private readonly ILogger<ActiveState> _logger;
+    private readonly MqttClientService _mqttClient;
 
-    public ActiveState(ILogger<ActiveState> logger)
+    public ActiveState(ILogger<ActiveState> logger, MqttClientService mqttClientService)
     {
         _logger = logger;
         Clients = new ConcurrentBag<RadioClient>();
         Radios = new ConcurrentDictionary<string, RadioProxy>();
+        _mqttClient = mqttClientService;
     }
     
     public ConcurrentDictionary<string, RadioProxy> Radios { get; private set; }
@@ -49,10 +53,13 @@ public class ActiveState
         {
             Clients.Add(client);
         }
+        
+        //AddSliceListeners(radio);
     }
 
     public void DisconnectRadio(Radio radio)
     {
+        RemoveSliceListeners(radio);
         radio.PropertyChanged -= RadioOnPropertyChanged;
         radio.SliceAdded -= RadioOnSliceAdded;
         radio.SliceRemoved -= RadioOnSliceRemoved;
@@ -81,83 +88,90 @@ public class ActiveState
 
     private void RadioOnSliceRemoved(Slice slc)
     {
-        RemoveSliceListeners(slc);
+        _logger.LogDebug("Slice Removed");
+        RemoveSliceListener(slc);
     }
 
     private void RadioOnSliceAdded(Slice slc)
     {
-        AddSliceListeners(slc);
+        _logger.LogDebug("Slice Added");
+        AddSliceListener(slc);
     }
 
     private void RadioOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         //sender is a Radio
         //_logger.LogDebug($"Radio property changed sender is Radio {sender}", sender is Radio);
-        // if (e.PropertyName is @"PersistenceLoaded" && ActiveRadio != null)
+        // if (e.PropertyName is @"PersistenceLoaded" && sender is Radio radio)
         // {
-        //    // ActiveRadio.PropertyChanged -= RadioOnPropertyChanged;
+        //     radio.PropertyChanged -= RadioOnPropertyChanged;
         //     //Ready = true;
-        //     ConfigureListeners();
+        //     ConfigureListeners(radio);
         // }
     }
 
-    private void ConfigureListeners()
+    private void AddSliceListeners(Radio radio)
     {
-        // if (ActiveRadio != null && ActiveRadio.Connected)
-        // {
-        //     lock (ActiveRadio.SliceList)
-        //     {
-        //         foreach (Slice slc in ActiveRadio.SliceList)
-        //         {
-        //             AddSliceListeners(slc);
-        //         }
-        //     }
-        // }
+        lock (radio.SliceList)
+        {
+            foreach (Slice slc in radio.SliceList)
+            {
+                AddSliceListener(slc);
+            }
+        }
+    }
+    
+    private void RemoveSliceListeners(Radio radio)
+    {
+        lock (radio.SliceList)
+        {
+            foreach (Slice slc in radio.SliceList)
+            {
+                RemoveSliceListener(slc);
+            }
+        }
     }
 
-    private void AddSliceListeners(Slice slc)
+    private void AddSliceListener(Slice slc)
     {
-        // if (ActiveRadio?.BoundClientID != null)
-        // {
-        //     if (slc.ClientHandle == _boundClientHandle)
-        //     {
-        //         slc.PropertyChanged += SliceOnPropertyChanged;
-        //     }
-        // }
-        // else
-        // {
-        //     slc.PropertyChanged += SliceOnPropertyChanged;
-        // }
+        _logger.LogDebug("Added slice {Letter} listener for radio {RadioSerial}",slc.Letter, slc.Radio.Serial);
+        slc.PropertyChanged += SliceOnPropertyChanged;
     }
 
-    private void RemoveSliceListeners(Slice slc)
+    private void RemoveSliceListener(Slice slc)
     {
+        _logger.LogDebug("Removed slice {Letter} listener for radio {RadioSerial}",slc.Letter, slc.Radio.Serial);
         slc.PropertyChanged -= SliceOnPropertyChanged;
     }
 
-    private void SliceOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private async void SliceOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (sender is Slice slice)
         {
-            switch (e.PropertyName)
-            {
-                case "Active":
-                case "Freq":
-                case "TuneStep":
-                case "RITOn":
-                case "XITOn":
-                case "RITFreq":
-                case "XITFreq":
-                case "DemodMode":
-                case "IsTransmitSlice":
-                    var vfoInfo = CreateSliceInfo(slice);
-                    if (vfoInfo != null)
-                    {
-                        OnVfoChanged(vfoInfo);
-                    }
-
-                    break;
-            }
+            var prop = System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(e.PropertyName);
+            await _mqttClient.Publish($"radios/{slice.Radio.Serial}/slice/{slice.Letter}/{prop}", slice.Freq.ToString(CultureInfo.InvariantCulture));
+            //_logger.LogDebug("Slice {Letter} property {PropertyName} for radio {RadioSerial} changed", slice.Letter, e.PropertyName, slice.Radio.Serial);
+            // switch (e.PropertyName)
+            // {
+            //     case "Active":
+            //     case "Freq":
+            //         await _mqttClient.Publish($"radios/{slice.Radio.Serial}/slice/{slice.Letter}/freq", slice.Freq.ToString(CultureInfo.InvariantCulture));
+            //         break;
+            //     case "TuneStep":
+            //     case "RITOn":
+            //     case "XITOn":
+            //     case "RITFreq":
+            //     case "XITFreq":
+            //     case "DemodMode":
+            //     case "IsTransmitSlice":
+            //         var vfoInfo = CreateSliceInfo(slice);
+            //         if (vfoInfo != null)
+            //         {
+            //             OnVfoChanged(vfoInfo);
+            //         }
+            //
+            //         break;
+            // }
         }
     }
 

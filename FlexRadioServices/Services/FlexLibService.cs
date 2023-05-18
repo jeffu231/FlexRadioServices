@@ -1,5 +1,6 @@
 using Flex.Smoothlake.FlexLib;
 using FlexRadioServices.Models;
+using FlexRadioServices.Models.Settings;
 
 namespace FlexRadioServices.Services
 {
@@ -7,13 +8,11 @@ namespace FlexRadioServices.Services
     {
         private readonly ILogger _logger;
         private readonly ActiveState _activeState;
-        private readonly AppSettings _appSettings;
-
-        public FlexLibService(ILogger<FlexLibService> logger, ActiveState activeState, AppSettings appSettings)
+       
+        public FlexLibService(ILogger<FlexLibService> logger, ActiveState activeState)
         {
             _logger = logger;
             _activeState = activeState;
-            _appSettings = appSettings;
         }
         
         protected override Task ExecuteAsync(CancellationToken stoppingToken)

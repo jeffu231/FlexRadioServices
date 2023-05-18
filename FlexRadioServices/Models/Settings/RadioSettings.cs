@@ -1,6 +1,6 @@
-namespace FlexRadioServices.Models;
+namespace FlexRadioServices.Models.Settings;
 
-public class AppSettings
+public class RadioSettings
 {
     public bool AutoConnect { get; set; }
 

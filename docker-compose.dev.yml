@@ -5,6 +5,4 @@ services:
       args:
         - GITHUB_USERNAME=${GITHUB_USERNAME}
         - GITHUB_TOKEN=${GITHUB_TOKEN} 
-    ports:
-      - "8081:80"
-      - "4991-4992:4991-4992/udp"
+

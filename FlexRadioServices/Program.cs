@@ -1,7 +1,9 @@
 using CoreServices;
 using Flex.Smoothlake.FlexLib;
 using FlexRadioServices.Models;
+using FlexRadioServices.Models.Settings;
 using FlexRadioServices.Services;
+using FlexRadioServices.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.Versioning;
@@ -10,7 +12,7 @@ namespace FlexRadioServices
 {
     public static class Program
     {
-        private static readonly AppSettings Settings = new AppSettings();
+        //private static readonly AppSettings Settings = new AppSettings();
         static void Main(string[] args)
         {
             
@@ -20,7 +22,8 @@ namespace FlexRadioServices
             
             var builder = WebApplication.CreateBuilder(args);
             
-            builder.Configuration.GetSection("Settings").Bind(Settings);
+            builder.Configuration.GetSection("RadioSettings").Bind(AppSettings.RadioSettings);
+            builder.Configuration.GetSection("MqttBrokerSettings").Bind(AppSettings.MqttBrokerSettings);
 
             ConfigureServices(builder.Services);
 
@@ -45,9 +48,9 @@ namespace FlexRadioServices
 
         private static void ConfigureServices(IServiceCollection services)
         {
-            services.AddSingleton(Settings);
             services.AddSingleton<ActiveState>();
             services.AddHostedService<FlexLibService>();
+            
             services.AddProblemDetails();
             
             services.AddControllers(o =>
@@ -55,6 +58,9 @@ namespace FlexRadioServices
                 o.RespectBrowserAcceptHeader = true;
                 o.ReturnHttpNotAcceptable = true;
             }).AddNewtonsoftJson().AddXmlSerializerFormatters();
+
+            services.AddMqttClientHostedService();
+
         }
 
         private static void ConfigureApiVersioning(WebApplicationBuilder builder)
