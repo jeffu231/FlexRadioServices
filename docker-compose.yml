@@ -2,6 +2,8 @@
 # Flex Radio Services
 ################################################################################
 # docker-compose -f docker-compose.yml -p flex-radio-services up
+# .env file required with values for GITHUB_USERNAME and GITHUB_TOKEN for Github 
+#      nuget repository read access
 ################################################################################
 version: "3.7"
 
@@ -12,14 +14,17 @@ services:
     ports:
       - "4991-4992:4991-4992/udp"
     networks:
-      - k9kld
+      - traefik-net
     build: 
       context: https://github.com/jeffu231/FlexRadioServices.git
       dockerfile: FlexRadioServices/Dockerfile
+      args:
+        - GITHUB_USERNAME=${GITHUB_USERNAME}
+        - GITHUB_TOKEN=${GITHUB_TOKEN}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.flex-radio-services-api.rule=Host(`docker01.home.kb9kld.org`) && (PathPrefix(`/api/frs/`))"
 
 networks:
-  k9kld:
+  traefik-net:
     external: true
