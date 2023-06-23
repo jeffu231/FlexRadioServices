@@ -1,0 +1,92 @@
+using System.ComponentModel;
+using System.Globalization;
+using Flex.Smoothlake.FlexLib;
+
+namespace FlexRadioServices.Services;
+
+public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadioInfoPublisher
+{
+    private readonly IMqttClientService _mqttClientService;
+    private readonly ILogger<MqttRadioInfoPublisher> _logger;
+    
+    public MqttRadioInfoPublisher(ILogger<MqttRadioInfoPublisher> logger, IFlexRadioService flexRadioService, 
+        IMqttClientService mqttClientService):base(flexRadioService, logger)
+    {
+        _logger = logger;
+        _mqttClientService = mqttClientService;
+    }
+
+    protected override void ConnectedRadioChanged(object? sender, ConnectedRadioEventArgs args)
+    {
+        if (args.PreviousRadio != null)
+        {
+            foreach (var slice in args.PreviousRadio.Radio.SliceList)
+            {
+                RadioOnSliceRemoved(slice);
+            }
+            args.PreviousRadio.Radio.SliceAdded -= RadioOnSliceAdded;
+            args.PreviousRadio.Radio.SliceRemoved -= RadioOnSliceRemoved;
+        }
+
+        if (ConnectedRadio != null)
+        {
+            foreach (var slice in ConnectedRadio.Radio.SliceList)
+            {
+                RadioOnSliceAdded(slice);
+            }
+            ConnectedRadio.Radio.SliceAdded += RadioOnSliceAdded;
+            ConnectedRadio.Radio.SliceRemoved += RadioOnSliceRemoved;
+        }
+    }
+
+
+    protected override void RadioOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        
+    }
+
+    private void RadioOnSliceRemoved(Slice slc)
+    {
+        _logger.LogDebug("Removed slice {Letter} listener for radio {RadioSerial}",slc.Letter, slc.Radio.Serial);
+        slc.PropertyChanged -= SliceOnPropertyChanged;
+    }
+
+    private void RadioOnSliceAdded(Slice slc)
+    {
+        _logger.LogDebug("Added slice {Letter} listener for radio {RadioSerial}",slc.Letter, slc.Radio.Serial);
+        slc.PropertyChanged += SliceOnPropertyChanged;
+    }
+    
+    private async void SliceOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (sender is Slice slice && e.PropertyName != null)
+        {
+            var prop = System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(e.PropertyName);
+            await _mqttClientService.Publish($"radios/{slice.Radio.Serial}/slice/{slice.Letter}/{prop}", slice.Freq.ToString(CultureInfo.InvariantCulture));
+            //_logger.LogDebug("Slice {Letter} property {PropertyName} for radio {RadioSerial} changed", slice.Letter, e.PropertyName, slice.Radio.Serial);
+            // switch (e.PropertyName)
+            // {
+            //     case "Active":
+            //     case "Freq":
+            //         await _mqttClient.Publish($"radios/{slice.Radio.Serial}/slice/{slice.Letter}/freq", slice.Freq.ToString(CultureInfo.InvariantCulture));
+            //         break;
+            //     case "TuneStep":
+            //     case "RITOn":
+            //     case "XITOn":
+            //     case "RITFreq":
+            //     case "XITFreq":
+            //     case "DemodMode":
+            //     case "IsTransmitSlice":
+            //         var vfoInfo = CreateSliceInfo(slice);
+            //         if (vfoInfo != null)
+            //         {
+            //             OnVfoChanged(vfoInfo);
+            //         }
+            //
+            //         break;
+            // }
+        }
+    }
+
+    
+}

@@ -1,5 +1,6 @@
 using FlexRadioServices.Attributes;
 using FlexRadioServices.Models;
+using FlexRadioServices.Services;
 using FlexRadioServices.Utils;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
@@ -12,32 +13,33 @@ namespace FlexRadioServices.Controllers;
 public class RadioController: ControllerBase
 {
     private readonly ILogger<RadioController> _logger;
-    private readonly ActiveState _activeState;
+    private readonly IFlexRadioService _flexRadioService;
     
-    public RadioController(ILogger<RadioController> logger, ActiveState activeState)
+    public RadioController(ILogger<RadioController> logger, IFlexRadioService flexRadioService)
     {
         _logger = logger;
-        _activeState = activeState;
+        _flexRadioService = flexRadioService;
     }
     
     [HttpGet("radios")]
     [MapToApiVersion("1.0")]
     public async Task<IActionResult> Radios()
     {
-        return await Task.FromResult(Ok(_activeState.Radios.Values));
+        return await Task.FromResult(Ok(_flexRadioService.DiscoveredRadios.ToList()));
     }
     
     [HttpPost("radios/{id}/connect")]
     [MapToApiVersion("1.0")]
     public IActionResult Connect(string id)
     {
-        if (_activeState.Radios.TryGetValue(id.Trim(), out var radio))
+        var radio = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        if (radio != null)
         {
             if (radio.Radio.Connected)
             {
                 return Ok("Already Connected");
             }
-            _activeState.ConnectToRadio(radio.Radio);
+            _flexRadioService.ConnectToRadio(radio);
             return Ok("Connected");
         }
         
@@ -48,14 +50,15 @@ public class RadioController: ControllerBase
     [MapToApiVersion("1.0")]
     public IActionResult Disconnect(string id)
     {
-        if (_activeState.Radios.TryGetValue(id.Trim(), out var radio))
+        var radio = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        if (radio != null)
         {
             if (!radio.Radio.Connected)
             {
-                return Ok("Not Connected");
+                return Ok("Already disconnected");
             }
-            _activeState.DisconnectRadio(radio.Radio);
-            return Ok("Disconnected");
+            _flexRadioService.DisconnectRadio(radio);
+            return Ok("Connected");
         }
         
         return Problem($"Radio {id} not found.", statusCode: 404);
@@ -65,7 +68,8 @@ public class RadioController: ControllerBase
     [MapToApiVersion("1.0")]
     public IActionResult Slices(string id)
     {
-        if (_activeState.Radios.TryGetValue(id, out var radioProxy))
+        var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        if (radioProxy != null)
         {
             var slices = radioProxy.Radio.SliceList.Select(s => new SliceProxy(s));
             return Ok(slices);
@@ -78,7 +82,8 @@ public class RadioController: ControllerBase
     public IActionResult PatchSlice(string id, [SliceLetter] string letter, 
         [FromBody] JsonPatchDocument<SliceProxy> slicePatch)
     {
-        if (_activeState.Radios.TryGetValue(id, out var radioProxy))
+        var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        if (radioProxy != null)
         {
             var slice = radioProxy.Radio.SliceList.Where(s => s.Letter.Equals(letter.ToUpper()))
                 .Select(s => new SliceProxy(s)).FirstOrDefault();
@@ -99,7 +104,8 @@ public class RadioController: ControllerBase
     [HttpGet("radios/{id}/slices/{letter}")]
     public IActionResult Slice(string id, [SliceLetter] string letter)
     {
-        if (_activeState.Radios.TryGetValue(id, out var radioProxy))
+        var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        if (radioProxy != null)
         {
             var slice = radioProxy.Radio.SliceList.Where(s => s.Letter.Equals(letter.ToUpper()))
                 .Select(s => new SliceProxy(s)).FirstOrDefault();

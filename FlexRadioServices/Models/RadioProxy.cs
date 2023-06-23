@@ -1,19 +1,32 @@
+using System.ComponentModel;
 using Flex.Smoothlake.FlexLib;
+using Flex.UiWpfFramework.Mvvm;
 using Flex.Util;
 using Newtonsoft.Json;
 
 namespace FlexRadioServices.Models;
 
-public sealed class RadioProxy
+public sealed class RadioProxy: ObservableObject
 {
     private readonly Radio _radio;
     public RadioProxy(Radio radio)
     {
         _radio = radio;
+        radio.PropertyChanged += RadioOnPropertyChanged;
+    }
+
+    private void RadioOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        //This is not inclusive so need to revisit this.
+        RaisePropertyChanged(e.PropertyName);
     }
 
     [JsonIgnore]
     internal Radio Radio => _radio;
+
+    public string Ip => _radio.IP.ToString();
+
+    public string BranchName => _radio.BranchName;
     
     public string Model => _radio.Model ?? string.Empty;
     
@@ -27,5 +40,18 @@ public sealed class RadioProxy
 
     public bool Connected => _radio.Connected;
 
+    public string ConnectedState => _radio.ConnectedState;
+
+    public string Status => _radio.Status;
+
     public int CommandPort => _radio.CommandPort;
+
+    public bool IsWan => _radio.IsWan;
+
+    public uint BoundClientId => _radio.ClientHandle;
+
+    public List<uint> GuiClients => _radio.GuiClients.Select(c => c.ClientHandle).ToList();
+
+    public string? TransmitSlice => _radio.TransmitSlice!=null?_radio.TransmitSlice.Letter:string.Empty;
+
 }
