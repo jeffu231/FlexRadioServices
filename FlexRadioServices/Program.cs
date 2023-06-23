@@ -1,6 +1,10 @@
+using System.Collections.Immutable;
+using System.Configuration;
 using CoreServices;
 using Flex.Smoothlake.FlexLib;
 using FlexRadioServices.Models;
+using FlexRadioServices.Models.Ports;
+using FlexRadioServices.Models.Ports.Network;
 using FlexRadioServices.Models.Settings;
 using FlexRadioServices.Services;
 using FlexRadioServices.Utils;
@@ -24,8 +28,9 @@ namespace FlexRadioServices
             
             builder.Configuration.GetSection("RadioSettings").Bind(AppSettings.RadioSettings);
             builder.Configuration.GetSection("MqttBrokerSettings").Bind(AppSettings.MqttBrokerSettings);
-
-            ConfigureServices(builder.Services);
+            var ports = builder.Configuration.GetSection("CatPorts").Get<PortSettings[]>();
+            
+            ConfigureServices(builder.Services, ports);
 
             ConfigureApiVersioning(builder);
             
@@ -46,10 +51,25 @@ namespace FlexRadioServices
             app.Run();
         }
 
-        private static void ConfigureServices(IServiceCollection services)
+        private static void ConfigureServices(IServiceCollection services, PortSettings[]? portSettings)
         {
-            services.AddSingleton<ActiveState>();
-            services.AddHostedService<FlexLibService>();
+            //services.AddSingleton<RadioState>();
+            services.AddSingleton<IFlexRadioService, FlexRadioService>();
+            services.AddTransient<ITcpServer, TcpServer>();
+            services.AddMqttClientHostedService();
+            services.AddHostedService<MqttRadioInfoPublisher>();
+
+            if (portSettings != null)
+            {
+                foreach (var portSetting in portSettings)
+                {
+                    Console.Out.WriteLine($"Adding port {portSetting.PortNumber}");
+                    services.AddSingleton<IHostedService>(x => new FlexCatPortService(portSetting, 
+                        x.GetRequiredService<ITcpServer>(),
+                        x.GetRequiredService<ILogger<FlexCatPortService>>(), 
+                        x.GetRequiredService<IFlexRadioService>()));
+                }
+            }
             
             services.AddProblemDetails();
             
@@ -59,7 +79,7 @@ namespace FlexRadioServices
                 o.ReturnHttpNotAcceptable = true;
             }).AddNewtonsoftJson().AddXmlSerializerFormatters();
 
-            services.AddMqttClientHostedService();
+            
 
         }
 
