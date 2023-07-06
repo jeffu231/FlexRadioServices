@@ -79,7 +79,7 @@ namespace FlexRadioServices
                 o.ReturnHttpNotAcceptable = true;
             }).AddNewtonsoftJson().AddXmlSerializerFormatters();
 
-            
+            services.Configure<RouteOptions>(options => options.LowercaseUrls = true);
 
         }
 

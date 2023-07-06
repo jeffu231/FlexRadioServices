@@ -1,3 +1,4 @@
+using Flex.Smoothlake.FlexLib;
 using FlexRadioServices.Attributes;
 using FlexRadioServices.Models;
 using FlexRadioServices.Services;
@@ -116,8 +117,72 @@ public class RadioController: ControllerBase
 
             return Problem($"Slice {letter} not found.", statusCode:404);
         }
-
+        
         return Problem("Radio {id} not found", statusCode:404);
 
+    }
+
+    [HttpPost("radios/{id}/spots")]
+    public IActionResult Spot(string id, [FromBody] List<Spot> spots)
+    {
+        var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        if (radioProxy != null)
+        {
+            if (radioProxy.Connected)
+            {
+                foreach (var spot in spots)
+                {
+                    radioProxy.Radio.RequestSpot(spot);
+                }
+
+                return Ok();
+            }
+            
+            return Problem("Radio {id} not connected", statusCode:400);
+        }
+        
+        return Problem("Radio {id} not found", statusCode:404);
+    }
+    
+    [HttpDelete("radios/{id}/spots")]
+    public IActionResult Spot(string id)
+    {
+        var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        if (radioProxy != null)
+        {
+            if (radioProxy.Connected)
+            {
+                radioProxy.Radio.ClearAllSpots();
+
+                return Ok();
+            }
+            
+            return Problem("Radio {id} not connected", statusCode:400);
+        }
+        
+        return Problem("Radio {id} not found", statusCode:404);
+    }
+    
+    [HttpDelete("radios/{id}/spots/{callsign}/{frequency}")]
+    public IActionResult Spot(string id, string callsign, double frequency)
+    {
+        if (string.IsNullOrEmpty(callsign))
+        {
+            return Problem("callsign is null or empty", statusCode: 400);
+        }
+        var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        if (radioProxy != null)
+        {
+            if (radioProxy.Connected)
+            {
+                radioProxy.Radio.RemoveSpot(callsign, frequency);
+
+                return Ok();
+            }
+            
+            return Problem("Radio {id} not connected", statusCode:400);
+        }
+        
+        return Problem("Radio {id} not found", statusCode:404);
     }
 }
