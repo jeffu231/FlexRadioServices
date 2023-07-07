@@ -40,7 +40,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
 
     public override Task StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogDebug("Starting on port {Port} ", _portSettings.PortNumber);
+        _logger.LogInformation("Starting CAT on port {Port} ", _portSettings.PortNumber);
         _cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _serverTask = _tcpServer.StartListener(IPAddress.Any, _portSettings.PortNumber, cancellationToken);
         _tcpServer.ClientConnected += TcpServerOnClientConnected;
@@ -64,7 +64,19 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             {
                 _logger.LogDebug("Sending {Response} for command {Command} to requesting client",response, command.Command);
             }
-            await command.Client.SendAsync(response);
+
+            try
+            {
+                if (command.Client.Connected)
+                {
+                    await command.Client.SendAsync(response);
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e,"Error sending response to client");
+            }
+            
             return;
         }
         

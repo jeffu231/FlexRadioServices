@@ -9,7 +9,7 @@ public interface ITcpServer
 
     event EventHandler<ClientDisconnectedEventArgs> ClientDisconnected;
 
-    List<TcpServerClient> Clients { get; }
+    List<ITcpServerClient> Clients { get; }
 
     Task StartListener(IPAddress ip, int port, CancellationToken cancellationToken);
 }

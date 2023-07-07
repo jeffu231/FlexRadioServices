@@ -8,10 +8,13 @@ namespace FlexRadioServices.Models.Ports.Network
         private TcpListener? _server;
         private bool _running = false;
         private readonly ILogger<TcpServer> _logger;
-        public TcpServer(ILogger<TcpServer> logger)
+        private readonly IServiceProvider _serviceProvider;
+        
+        public TcpServer(ILogger<TcpServer> logger, IServiceProvider serviceProvider)
         {
             _logger = logger;
-            Clients = new List<TcpServerClient>();
+            _serviceProvider = serviceProvider;
+            Clients = new List<ITcpServerClient>();
         }
         
         public async Task StartListener(IPAddress ip, int port, CancellationToken cancellationToken)
@@ -31,10 +34,14 @@ namespace FlexRadioServices.Models.Ports.Network
                         _logger.LogDebug("Waiting for a connection on port {Port}", port);
                         TcpClient client = _server.AcceptTcpClient();
                         _logger.LogDebug("Connected on port {Port}!", port);
-                        var networkClient = new TcpServerClient(client);
-                        networkClient.ConnectionClosed += NetworkClientOnConnectionClosed;
-                        Clients.Add(networkClient);
-                        Task.Run(() => StartClient(networkClient), cancellationToken);
+                        var networkClient = _serviceProvider.GetService<ITcpServerClient>();
+                        if (networkClient != null)
+                        {
+                            networkClient.Client = client;
+                            networkClient.ConnectionClosed += NetworkClientOnConnectionClosed;
+                            Clients.Add(networkClient);
+                            Task.Run(() => StartClient(networkClient), cancellationToken);
+                        }
                     }
                     
                     StopListener();
@@ -89,6 +96,6 @@ namespace FlexRadioServices.Models.Ports.Network
 
         public event EventHandler<ClientConnectedEventArgs>? ClientConnected;
         public event EventHandler<ClientDisconnectedEventArgs>? ClientDisconnected;
-        public List<TcpServerClient> Clients { get; }
+        public List<ITcpServerClient> Clients { get; }
     }
 }

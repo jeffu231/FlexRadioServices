@@ -55,6 +55,7 @@ namespace FlexRadioServices
         {
             //services.AddSingleton<RadioState>();
             services.AddSingleton<IFlexRadioService, FlexRadioService>();
+            services.AddTransient<ITcpServerClient, TcpServerClient>();
             services.AddTransient<ITcpServer, TcpServer>();
             services.AddMqttClientHostedService();
             services.AddHostedService<MqttRadioInfoPublisher>();
@@ -63,7 +64,6 @@ namespace FlexRadioServices
             {
                 foreach (var portSetting in portSettings)
                 {
-                    Console.Out.WriteLine($"Adding port {portSetting.PortNumber}");
                     services.AddSingleton<IHostedService>(x => new FlexCatPortService(portSetting, 
                         x.GetRequiredService<ITcpServer>(),
                         x.GetRequiredService<ILogger<FlexCatPortService>>(), 

@@ -2,47 +2,51 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using FlexRadioServices.Events;
-using System;
 
 namespace FlexRadioServices.Models.Ports.Network
 {
     public class TcpServerClient: ITcpServerClient
     {
-        private readonly TcpClient _client;
-        private readonly string _clientIpAddress = string.Empty;
+        private string _clientIpAddress = string.Empty;
+        private readonly ILogger<TcpServerClient> _logger;
         
-        public TcpServerClient(TcpClient client)
+        public TcpServerClient(ILogger<TcpServerClient> logger)
         {
-            _client = client;
-            if (client.Client.RemoteEndPoint is IPEndPoint endPoint)
-            {
-                _clientIpAddress = $"{endPoint.Address}:{endPoint.Port}";
-            }
+            _logger = logger;
         }
 
-        public bool Connected => _client.Connected;
+        public TcpClient? Client { get; set; }
+
+        public bool Connected => Client?.Connected ?? false;
         
         public async Task StartAsync()
         {
-            Console.WriteLine("Starting client {0}", _clientIpAddress);
-            var stream = _client.GetStream();
+            if (Client == null)
+            {
+                await Task.FromException(new ArgumentNullException(nameof(Client)));
+                return;
+            }
+            
+            if (Client.Client.RemoteEndPoint is IPEndPoint endPoint)
+            {
+                _clientIpAddress = $"{endPoint.Address}:{endPoint.Port}";
+            }
+            
+            _logger.LogInformation("Starting client {Ip}", _clientIpAddress);
+            var stream = Client.GetStream();
             Byte[] bytes = new Byte[256];
             int i;
             try
             {
-                while ((i = await stream.ReadAsync(bytes, 0, bytes.Length)) != 0 && _client.Connected)
+                while ((i = await stream.ReadAsync(bytes, 0, bytes.Length)) != 0 && Client.Connected)
                 {
                     string data = Encoding.ASCII.GetString(bytes, 0, i);
                     OnDataReceived(data);
-                    
-                    //Console.WriteLine($"Received: {data} from {_clientIpAddress} at {DateTime.Now.ToLongTimeString()}");
-                    //var str = _catDataProvider.HandleCommand(data.Trim());
-                    //Send(str);
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine("Exception: {0}", e.ToString());
+                _logger.LogError("Exception reading from client: {Exception}", e.ToString());
             }
             finally
             {
@@ -52,19 +56,17 @@ namespace FlexRadioServices.Models.Ports.Network
 
         public void Stop()
         {
-            //_catDataProvider.CatDataChanged -= CatDataProviderOnCatDataChanged;
-            _client.Close();
+            Client?.Close();
             OnConnectionClosed();
-            Console.Out.WriteLine($"Client {_clientIpAddress} Stopped");
+            _logger.LogInformation("Client {ClientIpAddress} Stopped", _clientIpAddress);
         }
         
         public async Task SendAsync(string data)
         {
-            if (_client.Connected)
+            if (Client != null && Client.Connected)
             {
                 Byte[] reply = Encoding.ASCII.GetBytes(data);
-                await _client.GetStream().WriteAsync(reply);
-                //Console.WriteLine($"Sent: {data} to {_clientIpAddress} at {DateTime.Now.ToLongTimeString()}");
+                await Client.GetStream().WriteAsync(reply);
             }
         }
 
@@ -78,10 +80,8 @@ namespace FlexRadioServices.Models.Ports.Network
 
         private void OnDataReceived(string data)
         {
-            //Console.Out.WriteLine($"OnDataRecieved: {data}");
             DataReceived?.Invoke(this, new DataReceivedEventArgs {Data = data});
         }
-
         
     }
 }
