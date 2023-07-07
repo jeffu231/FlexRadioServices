@@ -58,7 +58,7 @@ namespace FlexRadioServices.Models.Ports.Network
         {
             if (sender is TcpServerClient c)
             {
-                _logger.LogDebug("Connection Closed {Client}", c.Connected);
+                _logger.LogInformation("Connection Closed {Client}", c.Connected);
                 c.ConnectionClosed -= NetworkClientOnConnectionClosed;
                 ClientDisconnected?.Invoke(this, new ClientDisconnectedEventArgs(c));
                 Clients.Remove(c);

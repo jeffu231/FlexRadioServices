@@ -8,6 +8,7 @@ namespace FlexRadioServices.Models.Ports.Network
     public class TcpServerClient: ITcpServerClient
     {
         private string _clientIpAddress = string.Empty;
+        private int _port = 0;
         private readonly ILogger<TcpServerClient> _logger;
         
         public TcpServerClient(ILogger<TcpServerClient> logger)
@@ -32,7 +33,11 @@ namespace FlexRadioServices.Models.Ports.Network
                 _clientIpAddress = $"{endPoint.Address}:{endPoint.Port}";
             }
             
-            _logger.LogInformation("Starting client {Ip}", _clientIpAddress);
+            if (Client.Client.LocalEndPoint is IPEndPoint p)
+            {
+                _port = p.Port;
+            }
+            _logger.LogInformation("Starting client {Ip} on port {Port}", _clientIpAddress, _port);
             var stream = Client.GetStream();
             Byte[] bytes = new Byte[256];
             int i;
@@ -58,11 +63,12 @@ namespace FlexRadioServices.Models.Ports.Network
         {
             Client?.Close();
             OnConnectionClosed();
-            _logger.LogInformation("Client {ClientIpAddress} Stopped", _clientIpAddress);
+            _logger.LogInformation("Client {ClientIpAddress} on port {Port} Stopped", _clientIpAddress, _port);
         }
         
         public async Task SendAsync(string data)
         {
+            if (string.IsNullOrEmpty(data)) return;
             if (Client != null && Client.Connected)
             {
                 Byte[] reply = Encoding.ASCII.GetBytes(data);
@@ -75,7 +81,7 @@ namespace FlexRadioServices.Models.Ports.Network
 
         private void OnConnectionClosed()
         {
-            ConnectionClosed?.Invoke(this, new EventArgs());
+            ConnectionClosed?.Invoke(this, EventArgs.Empty);
         }
 
         private void OnDataReceived(string data)

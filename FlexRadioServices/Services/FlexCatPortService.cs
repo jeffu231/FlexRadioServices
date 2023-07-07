@@ -28,7 +28,8 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
     private bool _splitXit;
 
     private readonly StringBuilder _commandDataBuffer = new();
-    
+    private bool _autoRemoveSplitSlice = false;
+
     public FlexCatPortService(PortSettings portSettings, ITcpServer tcpServer,
         ILogger<FlexCatPortService> logger, IFlexRadioService flexRadioService) : base(flexRadioService, logger)
     {
@@ -104,10 +105,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             _commandDataBuffer.Append(data);
             foreach (string command in ExtractCommandsFromBuffer(_commandDataBuffer))
             {
-                if (!command.StartsWith("F"))
-                {
-                    _logger.LogDebug("Adding command {Command} to queue", command);
-                }
+                _logger.LogTrace("Adding command {Command} to queue", command);
                 _commandQueue.Enqueue(new CatCommand(command, client));
             }
         }
@@ -333,7 +331,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
                 response = Parse_ZZFA(input);
                 break;
             case "ZZFB":
-                //str1 = Parse_ZZFB(command);
+                //str1 = Parse_ZZFB(input);
                 break;
             case "ZZFI":
                 response = Parse_ZZFI(input);
@@ -341,11 +339,29 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             case "ZZIF":
                 response = Parse_ZZIF(input);
                 break;
+            case "ZZMB":
+                response = Parse_ZZMB(input);
+                break;
             case "ZZMD":
                 response = Parse_ZZMD(input);
                 break;
+            case "ZZME":
+                response = Parse_ZZME(input);
+                break;
+            case "ZZRG":
+                response = Parse_ZZRG(input);
+                break;
+            case "ZZRT":
+                response = Parse_ZZRT(input);
+                break;
             case "ZZRX":
                 response = Parse_ZZRX(input);
+                break;
+            case "ZZSW":
+                response = Parse_ZZSW(input);
+                break;
+            case "ZZXS":
+                response = Parse_ZZXS(input);
                 break;
             default:
                 _logger.LogWarning("Command {Cmd} is not implemented", input);
@@ -740,6 +756,29 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
         return zzifResponse;
     }
     
+    private string Parse_ZZMB(string command)
+    {
+        string zzmb = "?;";
+        if (_slice2 != null)
+        {
+            switch (command)
+            {
+                case "ZZMB":
+                    zzmb = "ZZMB" + Convert.ToByte(_slice2.Mute) + ";";
+                    break;
+                case "ZZMB0":
+                    _slice2.Mute = false;
+                    zzmb = "";
+                    break;
+                case "ZZMB1":
+                    _slice2.Mute = true;
+                    zzmb = "";
+                    break;
+            }
+        }
+        return zzmb;
+    }
+    
     private string Parse_ZZMD(string command)
     {
         string zzmdResponse = "?;";
@@ -783,6 +822,96 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
         
         return zzmdResponse;
     }
+    
+    private string Parse_ZZME(string command)
+    {
+        string zzme = "?;";
+        if (_slice2 != null)
+        {
+            if (command.Length == 4)
+            {
+                string demodMode = _slice2.DemodMode;
+                if (demodMode == "CW" && ConnectedRadio.Radio != null && ConnectedRadio.Radio.CWL_Enabled)
+                    demodMode = "CWL";
+                zzme = "ZZME" + DemodModeToFlexModeNumber(demodMode).ToString("D2") + ";";
+            }
+            else
+            {
+                if (command.Length == 6 && int.TryParse(command.Substring(4), out var result))
+                {
+                    string? demodMode = ZZModeNumberToDemodMode(result);
+                    switch (demodMode)
+                    {
+                        case null:
+                            return zzme;
+                        case "CWL":
+                            if (ConnectedRadio != null)
+                                ConnectedRadio.Radio.CWL_Enabled = true;
+                            demodMode = "CW";
+                            break;
+                        case "CW":
+                        case "CWU":
+                            if (ConnectedRadio != null)
+                                ConnectedRadio.Radio.CWL_Enabled = false;
+                            demodMode = "CW";
+                            break;
+                    }
+                    _slice2.DemodMode = demodMode;
+                    zzme = "";
+                }
+            }
+        }
+        return zzme;
+    }
+    
+    private string Parse_ZZRG(string command)
+    {
+        string zzrg = "?;";
+        if (_slice != null)
+        {
+            if (command.Length == 4)
+            {
+                double num = _slice.RITFreq;
+                if (num > 99999.0)
+                    num = 99999.0;
+                if (num < -99999.0)
+                    num = -99999.0;
+                zzrg = "ZZRG" + num.ToString("+00000;-00000") + ";";
+            }
+            else
+            {
+                if (command.Length == 10 && (command[4] == '+' || command[4] == '-') && int.TryParse(command.Substring(4), out var result))
+                {
+                    _slice.RITFreq = result;
+                    zzrg = "";
+                }
+            }
+        }
+        return zzrg;
+    }
+    
+    private string Parse_ZZRT(string command)
+    {
+        string zzrt = "?;";
+        if (_slice != null)
+        {
+            switch (command)
+            {
+                case "ZZRT":
+                    zzrt = "ZZRT" + Convert.ToByte(_slice.RITOn) + ";";
+                    break;
+                case "ZZRT0":
+                    _slice.RITOn = false;
+                    zzrt = "";
+                    break;
+                case "ZZRT1":
+                    _slice.RITOn = true;
+                    zzrt = "";
+                    break;
+            }
+        }
+        return zzrt;
+    }
 
     private string Parse_ZZRX(string command)
     {
@@ -801,6 +930,99 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             }
         }
         return zzrxResponse;
+    }
+    
+    private string Parse_ZZSW(string command)
+    {
+      string zzsw = "?;";
+      if (ConnectedRadio != null && _slice != null)
+      {
+        switch (command)
+        {
+          case "ZZSW":
+            if (_slice.IsTransmitSlice)
+            {
+              zzsw = "ZZSW0;";
+              break;
+            }
+            if (_slice2 != null && _slice2.IsTransmitSlice)
+            {
+              zzsw = "ZZSW1;";
+              break;
+            }
+            break;
+          case "ZZSW0":
+              _slice.IsTransmitSlice = true;
+            if (this._splitXit)
+            {
+              this._splitXit = false;
+              if (_slice != null)
+                  _slice.XITOn = false;
+            }
+            if (_split)
+            {
+              _split = false;
+              if (_slice2 != null && this._autoRemoveSplitSlice)
+              {
+                double splitFreq = this._splitFreq;
+                _slice2.Close();
+                //    this.SliceIndex2 = (string) null;
+                _splitFreq = splitFreq;
+              }
+            }
+            zzsw = "";
+            break;
+          case "ZZSW1":
+              if (_slice2 == null)
+              {
+                  //TODO Implement logic to create slice
+                  //this.SliceIndex2 = ConnectedRadio.Radio.CreateSlice(this._sliceViewModel);
+              }
+              if (_slice2 != null)
+              {
+                  if (_splitFreq != 0.0)
+                      _slice2.Freq = this._splitFreq;
+                  _slice2.IsTransmitSlice = true;
+                  if (_splitXit)
+                  {
+                      _splitXit = false;
+                      _slice.XITOn = false;
+                  }
+                  _split = true;
+                  zzsw = "";
+                  break;
+              }
+              _slice.XITOn = true;
+              _slice.XITFreq = this.GetXitFreq(_slice.Freq, _splitFreq);
+              _splitXit = true;
+              zzsw = "";
+              break;
+        }
+      }
+      return zzsw;
+    }
+    
+    private string Parse_ZZXS(string command)
+    {
+        string zzxs = "?;";
+        if (_slice != null)
+        {
+            switch (command)
+            {
+                case "ZZXS":
+                    zzxs = "ZZXS" + Convert.ToByte(_slice.XITOn) + ";";
+                    break;
+                case "ZZXS0":
+                    _slice.XITOn = false;
+                    zzxs = "";
+                    break;
+                case "ZZXS1":
+                    _slice.XITOn = true;
+                    zzxs = "";
+                    break;
+            }
+        }
+        return zzxs;
     }
 
     #endregion
