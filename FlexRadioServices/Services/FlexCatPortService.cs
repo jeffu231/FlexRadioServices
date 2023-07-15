@@ -360,6 +360,9 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             case "ZZSW":
                 response = Parse_ZZSW(input);
                 break;
+            case "ZZTX":
+                response = Parse_ZZTX(input);
+                break;
             case "ZZXS":
                 response = Parse_ZZXS(input);
                 break;
@@ -1001,6 +1004,34 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
       }
       return zzsw;
     }
+    
+    private string Parse_ZZTX(string command)
+    {
+        string zztx = "?;";
+        if (ConnectedRadio != null)
+        {
+            switch (command)
+            {
+                case "ZZTX":
+                    zztx = "ZZTX" + Convert.ToByte(ConnectedRadio.Radio.Mox) + ";";
+                    break;
+                case "ZZTX0":
+                    ConnectedRadio.Radio.Mox = false;
+                    zztx = "";
+                    break;
+                case "ZZTX1":
+                    if (_slice != null)
+                    {
+                        EnsureTransmitSlice();
+                        ConnectedRadio.Radio.Mox = true;
+                        zztx = "";
+                    }
+                    break;
+            }
+        }
+        return zztx;
+    }
+
     
     private string Parse_ZZXS(string command)
     {
