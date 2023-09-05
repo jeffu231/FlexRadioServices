@@ -1245,44 +1245,6 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
     
     private int GetXitFreq(double vfoAFreq, double vfoBFreq) => (int) Math.Round((vfoBFreq - vfoAFreq) * 1000000.0, 0);
 
-    private Slice? TransmitSlice
-    {
-        get
-        {
-            if (ConnectedRadio != null)
-            {
-                foreach (var slice in ConnectedRadio.Radio.SliceList)
-                {
-                    if (slice.IsTransmitSlice)
-                    {
-                        return slice;
-                    }
-                }
-            }
-
-            return null;
-        }
-    }
-
-    private Slice? ActiveSlice
-    {
-        get
-        {
-            if (ConnectedRadio != null)
-            {
-                foreach (var slice in ConnectedRadio.Radio.SliceList)
-                {
-                    if (slice.Active)
-                    {
-                        return slice;
-                    }
-                }
-            }
-
-            return null;
-        }
-    }
-    
     private Slice? VfoSlice(string vfo)
     {
         if (ConnectedRadio != null)
@@ -1309,4 +1271,5 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
 
         return null;
     }
+
 }

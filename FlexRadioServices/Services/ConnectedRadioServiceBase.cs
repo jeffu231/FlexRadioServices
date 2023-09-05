@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Flex.Smoothlake.FlexLib;
 using FlexRadioServices.Models;
 
 namespace FlexRadioServices.Services;
@@ -94,5 +95,44 @@ public abstract class ConnectedRadioServiceBase: BackgroundService
     
         public RadioProxy? PreviousRadio { get; init; }
     }
+    
+    protected Slice? TransmitSlice
+    {
+        get
+        {
+            if (ConnectedRadio != null)
+            {
+                foreach (var slice in ConnectedRadio.Radio.SliceList)
+                {
+                    if (slice.IsTransmitSlice)
+                    {
+                        return slice;
+                    }
+                }
+            }
 
+            return null;
+        }
+    }
+
+    protected Slice? ActiveSlice
+    {
+        get
+        {
+            if (ConnectedRadio != null)
+            {
+                foreach (var slice in ConnectedRadio.Radio.SliceList)
+                {
+                    if (slice.Active)
+                    {
+                        return slice;
+                    }
+                }
+            }
+
+            return null;
+        }
+    }
+    
+    
 }
