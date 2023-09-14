@@ -59,6 +59,7 @@ namespace FlexRadioServices
             services.AddTransient<ITcpServer, TcpServer>();
             services.AddMqttClientHostedService();
             services.AddHostedService<MqttRadioInfoPublisher>();
+            services.AddHostedService<RadioManagerService>();
 
             if (portSettings != null)
             {

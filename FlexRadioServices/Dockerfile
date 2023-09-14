@@ -7,6 +7,8 @@ FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 WORKDIR /src
 COPY ["FlexRadioServices/FlexRadioServices.csproj", "FlexRadioServices/"]
 
+RUN dotnet nuget locals all -c
+
 ARG GITHUB_USERNAME
 ARG GITHUB_TOKEN
 RUN dotnet nuget add source "https://nuget.pkg.github.com/jeffu231/index.json" -n github -u ${GITHUB_USERNAME} -p ${GITHUB_TOKEN} --store-password-in-clear-text
