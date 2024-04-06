@@ -13,7 +13,7 @@ services:
     restart: unless-stopped
     ports:
       - "4991-4992:4991-4992/udp"
-      - "6005-6009:6005-6009/tcp"
+      - "6005-6020:6005-6020/tcp"
     networks:
       - traefik-net
     build: 

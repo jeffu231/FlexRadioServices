@@ -41,7 +41,8 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
 
     public override Task StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Starting CAT on port {Port} ", _portSettings.PortNumber);
+        _logger.LogInformation("{Name} - Starting CAT on port {Port} ",
+            _portSettings.PortFriendlyName, _portSettings.PortNumber);
         _cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _serverTask = _tcpServer.StartListener(IPAddress.Any, _portSettings.PortNumber, cancellationToken);
         _tcpServer.ClientConnected += TcpServerOnClientConnected;
@@ -52,7 +53,8 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             return _serverTask;
         }
 
-        _logger.LogDebug("Tcp Server started for {Port}", _portSettings.PortNumber);
+        _logger.LogDebug("{Name} - Tcp Server started for {Port}", 
+            _portSettings.PortFriendlyName, _portSettings.PortNumber);
         return base.StartAsync(cancellationToken);
     }
 
@@ -63,7 +65,8 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             var response = ProcessCommand(command.Command);
             if (command.Command.StartsWith("IF"))
             {
-                _logger.LogDebug("Sending {Response} for command {Command} to requesting client",response, command.Command);
+                _logger.LogDebug("{Name} - Sending {Response} for command {Command} to requesting client",
+                    _portSettings.PortFriendlyName,response, command.Command);
             }
 
             try
@@ -75,7 +78,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             }
             catch (Exception e)
             {
-                _logger.LogError(e,"Error sending response to client");
+                _logger.LogError(e,"{Name} - Error sending response to client", _portSettings.PortFriendlyName);
             }
             
             return;
@@ -86,19 +89,21 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
 
     private void TcpServerOnClientDisconnected(object? sender, ClientDisconnectedEventArgs e)
     {
-        _logger.LogDebug("Removing data received listener {Port}", _portSettings.PortNumber);
+        _logger.LogDebug("{Name} - Removing data received listener {Port}", 
+            _portSettings.PortFriendlyName, _portSettings.PortNumber);
         e.Client.DataReceived -= ClientOnDataReceived;
     }
 
     private void TcpServerOnClientConnected(object? sender, ClientConnectedEventArgs e)
     {
-        _logger.LogDebug("Adding data received listener {Port}", _portSettings.PortNumber);
+        _logger.LogDebug("{Name} Adding data received listener {Port}", 
+            _portSettings.PortFriendlyName, _portSettings.PortNumber);
         e.Client.DataReceived += ClientOnDataReceived;
     }
 
     private void ClientOnDataReceived(object? sender, DataReceivedEventArgs e)
     {
-        _logger.LogTrace("Data received from client {Data}", e.Data);
+        _logger.LogTrace("{Name} - Data received from client {Data}", _portSettings.PortFriendlyName, e.Data);
         if (sender is ITcpServerClient client)
         {
             var data = e.Data.Replace("\r", "").Replace("\n", "");
@@ -184,8 +189,8 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
 
     private void RadioOnSliceRemoved(Slice slc)
     {
-        _logger.LogDebug("Removed slice {Letter} listener for radio {RadioSerial} on port {Port}", 
-            slc.Letter, slc.Radio.Serial, _portSettings.PortNumber);
+        _logger.LogDebug("{Name} - Removed slice {Letter} listener for radio {RadioSerial} on port {Port}", 
+            _portSettings.PortFriendlyName, slc.Letter, slc.Radio.Serial, _portSettings.PortNumber);
         slc.PropertyChanged -= SliceOnPropertyChanged;
         if (slc == _slice)
         {
@@ -195,9 +200,12 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
 
     private void RadioOnSliceAdded(Slice slc)
     {
-        _logger.LogDebug("Added slice {Letter} listener for radio {RadioSerial} on port {Port}", 
-            slc.Letter, slc.Radio.Serial, _portSettings.PortNumber);
+        _logger.LogDebug("{Name} Added slice {Letter} listener for radio {RadioSerial} on port {Port}", 
+            _portSettings.PortFriendlyName, slc.Letter, slc.Radio.Serial, _portSettings.PortNumber);
         slc.PropertyChanged += SliceOnPropertyChanged;
+
+        var clientHandle = GetClientHandle();
+        if (slc.ClientHandle != clientHandle) return;
 
         if (_portSettings.PortSliceType == PortSliceType.Designated && slc.Letter == _portSettings.VfoASliceLetter)
         {
@@ -223,17 +231,65 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
         }
     }
 
+    private bool IsClientSlice(Slice slc)
+    {
+        var clientId = GetClientId(slc);
+        if (clientId == _portSettings.ClientId)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    private string GetClientId(Slice s)
+    {
+        if (ConnectedRadio != null)
+        {
+            var client = ConnectedRadio.Radio.FindGUIClientByClientHandle(s.ClientHandle);
+            if (client != null)
+            {
+                return client.ClientID;
+            }
+        }
+        
+        _logger.LogError("{Name} - Could not find client for slice {Letter}, Handle {Handle}", 
+            _portSettings.PortFriendlyName,s.Letter, s.ClientHandle);
+        return string.Empty;
+    }
+
+    private uint GetClientHandle()
+    {
+        if (ConnectedRadio != null)
+        {
+            var client = ConnectedRadio.Radio.FindGUIClientByClientID(_portSettings.ClientId);
+            if (client != null)
+            {
+                return client.ClientHandle;
+            }
+        }
+
+        return 0;
+    }
+
     private async void SliceOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
        
         if (sender is Slice slice)
         {
-            _logger.LogDebug("Slice property {Property} changed {Letter}",e.PropertyName, slice.Letter);
+            _logger.LogDebug("{Name} - Slice property {Property} changed {Letter}, {Handle}",
+                _portSettings.PortFriendlyName, e.PropertyName, slice.Letter, slice.ClientHandle);
+            if (!IsClientSlice(slice))
+            {
+                _logger.LogDebug("{Name} - Slice property {Property} changed {Letter}, {Handle} not for our client",
+                    _portSettings.PortFriendlyName, e.PropertyName, slice.Letter, slice.ClientHandle);
+                return;
+            }
+            
             if (e.PropertyName == nameof(Slice.IsTransmitSlice) &&
                 _portSettings.PortSliceType == PortSliceType.Transmit)
             {
                 _slice = TransmitSlice;
-                _logger.LogDebug("Setting TX _slice to {Letter}", _slice?.Letter);
+                _logger.LogDebug("{Name} - Setting TX _slice to {Letter}",_portSettings.PortFriendlyName, _slice?.Letter);
                 await InitiateCommand("IF");
                 return;
             }
@@ -598,6 +654,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
         if (ConnectedRadio != null && _slice != null &&
             (command == "TX" || command == "TX0" || command == "TX1" || command == "TX2"))
         {
+            ConnectedRadio.Radio.BindGUIClient(GetClientId(_slice));
             EnsureTransmitSlice();
             ConnectedRadio.Radio.Mox = true;
             tx = "";
@@ -1245,12 +1302,54 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
     
     private int GetXitFreq(double vfoAFreq, double vfoBFreq) => (int) Math.Round((vfoBFreq - vfoAFreq) * 1000000.0, 0);
 
+    private Slice? TransmitSlice
+    {
+        get
+        {
+            if (ConnectedRadio != null)
+            {
+                var clientHandle = GetClientHandle();
+                foreach (var slice in ConnectedRadio.Radio.SliceList)
+                {
+                    if (slice.ClientHandle == clientHandle && slice.IsTransmitSlice)
+                    {
+                        return slice;
+                    }
+                }
+            }
+
+            return null;
+        }
+    }
+
+    private Slice? ActiveSlice
+    {
+        get
+        {
+            if (ConnectedRadio != null)
+            {
+                var clientHandle = GetClientHandle();
+                foreach (var slice in ConnectedRadio.Radio.SliceList)
+                {
+                    if (slice.ClientHandle == clientHandle && slice.Active)
+                    {
+                        return slice;
+                    }
+                }
+            }
+
+            return null;
+        }
+    }
+    
     private Slice? VfoSlice(string vfo)
     {
         if (ConnectedRadio != null)
         {
+            var clientHandle = GetClientHandle();
             foreach (var slice in ConnectedRadio.Radio.SliceList)
             {
+                if(slice.ClientHandle != clientHandle) continue;
                 if ("A".Equals(vfo))
                 {
                     if (slice.Letter == _portSettings.VfoASliceLetter)
@@ -1271,5 +1370,4 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
 
         return null;
     }
-
 }

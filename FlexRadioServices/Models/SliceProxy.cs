@@ -15,6 +15,10 @@ public class SliceProxy
     [JsonIgnore]
     internal Slice Slice => _flexSlice;
 
+    public uint ClientHandle => _flexSlice.ClientHandle;
+
+    public string Owner => _flexSlice.Owner;
+
     public bool IsTransmitSlice
     {
         get => _flexSlice.IsTransmitSlice;
