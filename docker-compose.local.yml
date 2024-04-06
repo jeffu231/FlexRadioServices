@@ -11,21 +11,15 @@ services:
   flex-radio-services:
     image: flex-radio-api
     restart: unless-stopped
-    ports:
-      - "4991-4992:4991-4992/udp"
-      - "6005-6020:6005-6020/tcp"
-    networks:
-      - traefik-net
     build: 
       context: .
       dockerfile: FlexRadioServices/Dockerfile
       args:
         - GITHUB_USERNAME=${GITHUB_USERNAME}
         - GITHUB_TOKEN=${GITHUB_TOKEN}
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.flex-radio-services-api.rule=Host(`docker01.home.kb9kld.org`) && (PathPrefix(`/api/frs/`))"
+    ports:
+      - "4991-4992:4991-4992/udp"
+      - "6005-6020:6005-6020/tcp"
+      
+    
 
-networks:
-  traefik-net:
-    external: true
