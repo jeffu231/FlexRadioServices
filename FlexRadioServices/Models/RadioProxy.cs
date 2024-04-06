@@ -50,7 +50,7 @@ public sealed class RadioProxy: ObservableObject
 
     public uint BoundClientId => _radio.ClientHandle;
 
-    public List<uint> GuiClients => _radio.GuiClients.Select(c => c.ClientHandle).ToList();
+    public List<RadioClientProxy> GuiClients => _radio.GuiClients.Select(c => new RadioClientProxy(c)).ToList();
 
     public string? TransmitSlice => _radio.TransmitSlice!=null?_radio.TransmitSlice.Letter:string.Empty;
 

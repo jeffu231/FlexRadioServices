@@ -65,6 +65,20 @@ public class RadioController: ControllerBase
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
     
+    [HttpGet("radios/{id}/clients")]
+    [MapToApiVersion("1.0")]
+    public IActionResult Clients(string id)
+    {
+        var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        if (radioProxy != null)
+        {
+            var clients = radioProxy.Radio.GuiClients.Select(c => new RadioClientProxy(c));
+            return Ok(clients);
+        }
+
+        return Problem($"Radio {id} not found.", statusCode: 404);
+    }
+    
     [HttpGet("radios/{id}/slices")]
     [MapToApiVersion("1.0")]
     public IActionResult Slices(string id)
@@ -78,37 +92,41 @@ public class RadioController: ControllerBase
 
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
-
-    [HttpPatch("radios/{id}/slices/{letter}")]
-    public IActionResult PatchSlice(string id, [SliceLetter] string letter, 
-        [FromBody] JsonPatchDocument<SliceProxy> slicePatch)
+    
+    [HttpGet("radios/{id}/{clientId}/slices")]
+    [MapToApiVersion("1.0")]
+    public IActionResult Slices(string id, string clientId)
     {
         var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
         if (radioProxy != null)
         {
-            var slice = radioProxy.Radio.SliceList.Where(s => s.Letter.Equals(letter.ToUpper()))
-                .Select(s => new SliceProxy(s)).FirstOrDefault();
-            if (slice != null)
+            var client = radioProxy.GuiClients.FirstOrDefault(c => c.ClientId == clientId);
+            if (client == null)
             {
-                slicePatch.ApplyToSafely(slice, ModelState);
-                if (!ModelState.IsValid) return ValidationProblem(ModelState);
-                return Ok(slice);
+                return Problem($"Client id {clientId} not found");
             }
-            
-            return Problem($"Slice {letter} not found.", statusCode: 404);
+            var slices = radioProxy.Radio.SliceList.Where(s => s.ClientHandle == client.ClientHandle).Select(s => new SliceProxy(s));
+            return Ok(slices);
         }
 
-        return Problem("Radio {id} not found", statusCode:404);
-
+        return Problem($"Radio {id} not found.", statusCode: 404);
     }
     
-    [HttpGet("radios/{id}/slices/{letter}")]
-    public IActionResult Slice(string id, [SliceLetter] string letter)
+    [HttpGet("radios/{id}/{clientId}/slices/{letter}")]
+    [MapToApiVersion("1.0")]
+    public IActionResult Slice(string id, string clientId, [SliceLetter] string letter)
     {
         var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
         if (radioProxy != null)
         {
-            var slice = radioProxy.Radio.SliceList.Where(s => s.Letter.Equals(letter.ToUpper()))
+            var client = radioProxy.GuiClients.FirstOrDefault(c => c.ClientId == clientId);
+            if (client == null)
+            {
+                return Problem($"Client id {clientId} not found");
+            }
+            
+            var slice = radioProxy.Radio.SliceList.Where(s => s.ClientHandle == client.ClientHandle && 
+                                                               s.Letter.Equals(letter.ToUpper()))
                 .Select(s => new SliceProxy(s)).FirstOrDefault();
             if (slice != null)
             {
@@ -118,6 +136,38 @@ public class RadioController: ControllerBase
             return Problem($"Slice {letter} not found.", statusCode:404);
         }
         
+        return Problem("Radio {id} not found", statusCode:404);
+
+    }
+    
+    [HttpPatch("radios/{id}/{clientId}/slices/{letter}")]
+    [MapToApiVersion("1.0")]
+    public IActionResult PatchSlice(string id, string clientId, [SliceLetter] string letter, 
+        [FromBody] JsonPatchDocument<SliceProxy> slicePatch)
+    {
+        var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        if (radioProxy != null)
+        {
+            
+            var client = radioProxy.Radio.FindGUIClientByClientID(clientId);//radioProxy.GuiClients.FirstOrDefault(c => c.ClientId == clientId);
+            if (client == null)
+            {
+                return Problem($"Client id {clientId} not found");
+            }
+
+            var s = radioProxy.Radio.FindSliceByLetter(letter, client.ClientHandle);
+            
+            if (s != null)
+            {
+                var slice = new SliceProxy(s);
+                slicePatch.ApplyToSafely(slice, ModelState);
+                if (!ModelState.IsValid) return ValidationProblem(ModelState);
+                return Ok(slice);
+            }
+            
+            return Problem($"Slice {letter} not found.", statusCode: 404);
+        }
+
         return Problem("Radio {id} not found", statusCode:404);
 
     }
