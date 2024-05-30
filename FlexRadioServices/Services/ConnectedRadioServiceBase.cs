@@ -96,7 +96,7 @@ public abstract class ConnectedRadioServiceBase: BackgroundService
         public RadioProxy? PreviousRadio { get; init; }
     }
     
-    protected Slice? TransmitSlice
+    protected virtual Slice? TransmitSlice
     {
         get
         {

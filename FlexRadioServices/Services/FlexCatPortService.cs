@@ -1312,7 +1312,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
     
     private int GetXitFreq(double vfoAFreq, double vfoBFreq) => (int) Math.Round((vfoBFreq - vfoAFreq) * 1000000.0, 0);
 
-    private Slice? TransmitSlice
+    protected override Slice? TransmitSlice
     {
         get
         {
