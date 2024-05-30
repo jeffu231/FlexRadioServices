@@ -654,13 +654,24 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
         if (ConnectedRadio != null && _slice != null &&
             (command == "TX" || command == "TX0" || command == "TX1" || command == "TX2"))
         {
-            ConnectedRadio.Radio.BindGUIClient(GetClientId(_slice));
-            EnsureTransmitSlice();
-            ConnectedRadio.Radio.Mox = true;
+            EnableTransmit();
             tx = "";
         }
 
         return tx;
+    }
+
+    private void EnableTransmit()
+    {
+        if (ConnectedRadio != null && _slice != null)
+        {
+            var clientId = GetClientId(_slice);
+            _logger.LogInformation("TX: Switching bound client to {ClientId}", clientId);
+            ConnectedRadio.Radio.BindGUIClient(clientId);
+            EnsureTransmitSlice();
+            ConnectedRadio.Radio.Mox = true;
+        }
+        
     }
 
     #endregion
@@ -1079,8 +1090,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
                 case "ZZTX1":
                     if (_slice != null)
                     {
-                        EnsureTransmitSlice();
-                        ConnectedRadio.Radio.Mox = true;
+                       EnableTransmit();
                         zztx = "";
                     }
                     break;
