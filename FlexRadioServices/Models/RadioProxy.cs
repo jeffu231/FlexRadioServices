@@ -48,10 +48,16 @@ public sealed class RadioProxy: ObservableObject
 
     public bool IsWan => _radio.IsWan;
 
-    public uint BoundClientId => _radio.ClientHandle;
+    public string BoundClientId => _radio.BoundClientID;
+
+    public uint ClientHandle => _radio.ClientHandle;
+    
+    public string GuiClientId => _radio.GUIClientID;
 
     public List<RadioClientProxy> GuiClients => _radio.GuiClients.Select(c => new RadioClientProxy(c)).ToList();
 
     public string? TransmitSlice => _radio.TransmitSlice!=null?_radio.TransmitSlice.Letter:string.Empty;
 
+    public uint TxClientHandle => _radio.TXClientHandle;
+    
 }

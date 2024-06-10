@@ -8,7 +8,8 @@ public class RadioManagerService: ConnectedRadioServiceBase
 
     private ILogger<RadioManagerService> _logger;
     private CancellationTokenSource? _cancellationToken;
-    private bool _txSliceMute = false;
+    private Slice? _lastTxSlice = null;
+    private bool _lastTxSliceMuteState;
     
     public RadioManagerService(IFlexRadioService flexRadioService, ILogger<RadioManagerService> logger) : base(flexRadioService, logger)
     {
@@ -28,7 +29,7 @@ public class RadioManagerService: ConnectedRadioServiceBase
             args.PreviousRadio.Radio.SliceRemoved -= RadioOnSliceRemoved;
             args.PreviousRadio.Radio.PanadapterRemoved += RadioOnPanadapterRemoved;
             
-            foreach (var panadapter in ConnectedRadio.Radio.PanadapterList.ToList())
+            foreach (var panadapter in args.PreviousRadio.Radio.PanadapterList.ToList())
             {
                 panadapter.PropertyChanged -= PanadapterOnPropertyChanged;
             }
@@ -113,7 +114,9 @@ public class RadioManagerService: ConnectedRadioServiceBase
     {
         if (sender is Slice s)
         {
-            _logger.LogInformation("Slice property {Prop} changed", e.PropertyName);
+            var guiClient = s.Radio.FindGUIClientByClientHandle(s.ClientHandle);
+            _logger.LogInformation("{Station}/{Client} Slice {Letter} prop {Prop} changed",
+                guiClient.Station, guiClient.Program, s.Letter, e.PropertyName);
         }
     }
 
@@ -121,34 +124,87 @@ public class RadioManagerService: ConnectedRadioServiceBase
     {
         if (sender is Radio r)
         {
-            if(e.PropertyName == nameof(Radio.Mox))
+            if(e.PropertyName == nameof(Radio.InterlockState))
             {
-                HandleMoxChange(r);
+                _logger.LogDebug("Interlock changed {InterlockState}", r.InterlockState);
+                if (r.InterlockState == InterlockState.PTTRequested ||
+                    r.InterlockState == InterlockState.Ready)
+                {
+                    HandleMoxChange(r);
+                }
+                
+            }
+            
+            if (e.PropertyName == nameof(Radio.TXClientHandle))
+            {
+                var client = r.FindGUIClientByClientHandle(r.TXClientHandle);
+                if (client != null)
+                {
+                    _logger.LogInformation("TX client handle changed {Station} / {Program} / {ClientId}", 
+                        client.Station, client.Program, r.TXClientHandle);
+                }
+                else
+                {
+                    _logger.LogInformation("TX client handle changed {ClientId}", r.TXClientHandle);
+                }
+               
             }
         }
     }
     
+    /// <summary>
+    /// This voodoo is to work around an issue in the Flex when Full duplex is on the transmitting slice is not muted.
+    /// If you have split paths on that slice for something like a transverter, you hear own audio delayed. Full duplex 
+    /// should always mute the transmit slice. So the logic checks if Full Duplex is on and the transmitting slice has
+    /// a different RxAnt and TxAnt, then it mutes the slice on Tx if not muted and restores the state on Rx.
+    /// </summary>
+    /// <param name="r">Radio</param>
     private void HandleMoxChange(Radio r)
     {
         if (r.FullDuplexEnabled)
         {
-            var txSlice = TransmitSlice;
-            if (txSlice != null)
+            _logger.LogDebug("Full Duplex is on - Applying mute logic");
+            if (IsInterlockMox(r.InterlockState))
             {
-                if (r.Mox)
+                var txSlice = r.SliceList.ToArray().FirstOrDefault(s => s.IsTransmitSlice && s.ClientHandle == r.TXClientHandle);
+                if (txSlice != null && txSlice.RXAnt != txSlice.TXAnt)
                 {
-                    _txSliceMute = txSlice.Mute;
+                    _lastTxSlice = txSlice;
+                    _lastTxSliceMuteState = txSlice.Mute;
                     if (!txSlice.Mute)
                     {
+                        var client = txSlice.Radio.FindGUIClientByClientHandle(txSlice.ClientHandle);
+                        _logger.LogInformation("TX Slice {Letter} on {Station}/{Client} muted", 
+                            txSlice.Letter, client.Station, client.Program);
                         txSlice.Mute = true;
                     }
                 }
-                else
+            }
+            else
+            {
+                if (_lastTxSlice != null)
                 {
-                    txSlice.Mute = _txSliceMute;
+                    _logger.LogDebug("Restoring mute state");
+                    _lastTxSlice.Mute = _lastTxSliceMuteState;
                 }
+                _lastTxSlice = null;
+                _lastTxSliceMuteState = false;
             }
         }
+    }
+    
+    private bool IsInterlockMox(InterlockState state)
+    {
+        bool flag = false;
+        switch (state)
+        {
+            case InterlockState.PTTRequested:
+            case InterlockState.Transmitting:
+            case InterlockState.UnkeyRequested:
+                flag = true;
+                break;
+        }
+        return flag;
     }
 
 }

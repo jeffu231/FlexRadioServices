@@ -392,6 +392,12 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             case "ZZFI":
                 response = Parse_ZZFI(input);
                 break;
+            case "ZZFR":
+                response = Parse_ZZFR(input);
+                break;
+            case "ZZFT":
+                response = Parse_ZZFT(input);
+                break;
             case "ZZIF":
                 response = Parse_ZZIF(input);
                 break;
@@ -426,7 +432,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
                 _logger.LogWarning("Command {Cmd} is not implemented", input);
                 break;
         }
-
+        _logger.LogDebug("Command {Cmd} response {Response}", input, response);
         return response;
     }
 
@@ -530,9 +536,14 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
 
                     break;
                 case "FT0":
+                    _slice.IsTransmitSlice = true;
                     ftResponse = "";
                     break;
                 case "FT1":
+                    if (_slice2 != null && _slice2.IsTransmitSlice)
+                    {
+                        _slice2.IsTransmitSlice = true;
+                    }
                     ftResponse = "";
                     break;
             }
@@ -661,19 +672,6 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
         return tx;
     }
 
-    private void EnableTransmit()
-    {
-        if (ConnectedRadio != null && _slice != null)
-        {
-            var clientId = GetClientId(_slice);
-            _logger.LogInformation("TX: Switching bound client to {ClientId}", clientId);
-            ConnectedRadio.Radio.BindGUIClient(clientId);
-            EnsureTransmitSlice();
-            ConnectedRadio.Radio.Mox = true;
-        }
-        
-    }
-
     #endregion
 
     #region Extended Flex
@@ -789,6 +787,50 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             }
         }
         return zzfiResponse;
+    }
+    
+    private string Parse_ZZFR(string command)
+    {
+        string zzfr = "?;";
+        if (_slice != null && command.Length == 4)
+        {
+            if (_slice2 == null)
+                _slice.Active = !_slice.Active;
+            else if (!_slice.Active)
+            {
+                _slice.Active = true;
+                _slice2.Active = false;
+            }
+            else
+            {
+                _slice2.Active = true;
+                _slice.Active = false;
+            }
+            zzfr = "";
+        }
+        return zzfr;
+    }
+    
+    private string Parse_ZZFT(string command)
+    {
+        string zzft = "?;";
+        if (_slice != null && command.Length == 4)
+        {
+            if (_slice2 == null)
+                _slice.IsTransmitSlice = !_slice.IsTransmitSlice;
+            else if (!_slice.IsTransmitSlice)
+            {
+                _slice.IsTransmitSlice = true;
+                _slice2.IsTransmitSlice = false;
+            }
+            else
+            {
+                _slice2.IsTransmitSlice = true;
+                _slice.IsTransmitSlice = false;
+            }
+            zzft = "";
+        }
+        return zzft;
     }
 
     
@@ -1124,6 +1166,24 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
     }
 
     #endregion
+    
+    private void EnableTransmit()
+    {
+        if (ConnectedRadio != null && _slice != null)
+        {
+            EnsureTransmitSlice();
+            var ts = TransmitSlice;
+            if (ts != null)
+            {
+                var clientId = GetClientId(ts);
+                _logger.LogInformation("TX: Switching bound client to {ClientId}", clientId);
+                ConnectedRadio.Radio.BoundClientID = clientId;
+            
+                ConnectedRadio.Radio.Mox = true;
+            }
+        }
+        
+    }
 
     private void EnsureTransmitSlice()
     {

@@ -50,25 +50,29 @@ namespace FlexRadioServices.Services
 
         private void RadioOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(Radio.Connected) && sender is RadioProxy radioProxy)
+            if (sender is RadioProxy radioProxy)
             {
-                if (radioProxy.Connected && radioProxy != ConnectedRadio)
+                if (e.PropertyName == nameof(Radio.Connected) )
                 {
-                    _logger.LogDebug("Radio connected");
-                    ConnectedRadio = radioProxy;
-                    var client = radioProxy.Radio.GuiClients.FirstOrDefault();
-                    if (client != null)
+                    if (radioProxy.Connected && radioProxy != ConnectedRadio)
                     {
-                        _logger.LogDebug("Binding to client {Client}", client.Program);
-                        radioProxy.Radio.BoundClientID = client.ClientID;
+                        _logger.LogDebug("Radio connected");
+                        ConnectedRadio = radioProxy;
+                        var client = radioProxy.Radio.GuiClients.FirstOrDefault();
+                        if (client != null)
+                        {
+                            _logger.LogDebug("Binding to client {Client}", client.Program);
+                            radioProxy.Radio.BoundClientID = client.ClientID;
+                        }
+                    }
+                    else if (!radioProxy.Connected && radioProxy == ConnectedRadio)
+                    {
+                        _logger.LogDebug("Radio disconnected");
+                        ConnectedRadio = null;
                     }
                 }
-                else if (!radioProxy.Connected && radioProxy == ConnectedRadio)
-                {
-                    _logger.LogDebug("Radio disconnected");
-                    ConnectedRadio = null;
-                }
             }
+            
         }
 
         private void OnRadioRemoved(Radio radio)
