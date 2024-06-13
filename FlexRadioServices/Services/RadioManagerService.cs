@@ -115,8 +115,16 @@ public class RadioManagerService: ConnectedRadioServiceBase
         if (sender is Slice s)
         {
             var guiClient = s.Radio.FindGUIClientByClientHandle(s.ClientHandle);
-            _logger.LogInformation("{Station}/{Client} Slice {Letter} prop {Prop} changed",
-                guiClient.Station, guiClient.Program, s.Letter, e.PropertyName);
+            if (guiClient != null)
+            {
+                _logger.LogInformation("{Station}/{Client} Slice {Letter} prop {Prop} changed",
+                    guiClient.Station, guiClient.Program, s.Letter, e.PropertyName);
+            }
+            else
+            {
+                _logger.LogInformation("Client (Null) Slice {Letter} prop {Prop} changed", s.Letter, e.PropertyName);
+            }
+           
         }
     }
 
