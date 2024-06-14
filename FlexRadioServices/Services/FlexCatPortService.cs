@@ -1176,8 +1176,12 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             if (ts != null)
             {
                 var clientId = GetClientId(ts);
-                _logger.LogInformation("TX: Switching bound client to {ClientId}", clientId);
-                ConnectedRadio.Radio.BoundClientID = clientId;
+                
+                if (ConnectedRadio.Radio.BoundClientID != clientId)
+                {
+                    _logger.LogInformation("TX: Switching bound client to {ClientId}", clientId);
+                    ConnectedRadio.Radio.BoundClientID = clientId;
+                }
             
                 ConnectedRadio.Radio.Mox = true;
             }
