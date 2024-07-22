@@ -5,7 +5,6 @@
 # .env file required with values for GITHUB_USERNAME and GITHUB_TOKEN for Github 
 #      nuget repository read access
 ################################################################################
-version: "3.7"
 
 services:
   flex-radio-services:

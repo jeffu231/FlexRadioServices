@@ -6,7 +6,6 @@
 #      nuget repository read access
 # This is for running locally without a traefik setup
 ################################################################################
-version: "3.7"
 
 services:
   flex-radio-services:
