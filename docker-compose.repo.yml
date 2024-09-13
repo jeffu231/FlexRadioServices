@@ -9,7 +9,7 @@
 
 services:
   flex-radio-services:
-    image: ghcr.io/jeffu231/flexradioservices:1.0.0
+    image: flex-radio-api
     container_name: flex-radio-api
     restart: unless-stopped
     ports:
@@ -17,6 +17,12 @@ services:
       - "6005-6020:6005-6020/tcp"
     networks:
       - traefik-net
+    build: 
+      context: https://github.com/jeffu231/FlexRadioServices.git
+      dockerfile: FlexRadioServices/Dockerfile
+      args:
+        - GITHUB_USERNAME=${GITHUB_USERNAME}
+        - GITHUB_TOKEN=${GITHUB_TOKEN}
     volumes:
       - flex-radio-api-settings:/app/appsettings
     labels:
