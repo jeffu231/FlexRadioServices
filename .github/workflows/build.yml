@@ -6,10 +6,8 @@ on:
   push:
     branches:
       - master
-    paths-ignore:
-      - '**/.gitignore'
-      - '**/README.md'
-      - '**/docker-compose.*.yml'
+    paths:
+      - 'FlexRadioServices/**'
 
 env:
   REGISTRY: ghcr.io
