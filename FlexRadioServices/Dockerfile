@@ -25,3 +25,7 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "FlexRadioServices.dll"]
+
+LABEL org.opencontainers.image.source=https://github.com/jeffu231/FlexRadioServices
+LABEL org.opencontainers.image.description="Flex Radio Services - An API to integrate with Flex 6xxx radios"
+LABEL org.opencontainers.image.licenses=MIT
