@@ -8,14 +8,18 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddMqttClientHostedService(this IServiceCollection services)
     {
-        services.AddMqttClientServiceWithConfig(aspOptionBuilder =>
+        if (!string.IsNullOrEmpty(AppSettings.MqttBrokerSettings.BrokerHost))
         {
-            aspOptionBuilder
-                .WithCredentials(AppSettings.MqttBrokerSettings.ClientUser,
-                    AppSettings.MqttBrokerSettings.ClientPassword)
-                .WithClientId(AppSettings.MqttBrokerSettings.ClientId)
-                .WithTcpServer(AppSettings.MqttBrokerSettings.BrokerHost, AppSettings.MqttBrokerSettings.BrokerPort);
-        });
+            services.AddMqttClientServiceWithConfig(aspOptionBuilder =>
+            {
+                aspOptionBuilder
+                    .WithCredentials(AppSettings.MqttBrokerSettings.ClientUser,
+                        AppSettings.MqttBrokerSettings.ClientPassword)
+                    .WithClientId(AppSettings.MqttBrokerSettings.ClientId)
+                    .WithTcpServer(AppSettings.MqttBrokerSettings.BrokerHost, AppSettings.MqttBrokerSettings.BrokerPort);
+            });
+        }
+        
         return services;
     }
 

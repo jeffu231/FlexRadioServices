@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Configuration;
+using System.Diagnostics;
 using CoreServices;
 using Flex.Smoothlake.FlexLib;
 using FlexRadioServices.Models;
@@ -59,8 +60,11 @@ namespace FlexRadioServices
             services.AddSingleton<IFlexRadioService, FlexRadioService>();
             services.AddTransient<ITcpServerClient, TcpServerClient>();
             services.AddTransient<ITcpServer, TcpServer>();
-            services.AddMqttClientHostedService();
-            services.AddHostedService<MqttRadioInfoPublisher>();
+            if (!string.IsNullOrEmpty(AppSettings.MqttBrokerSettings.BrokerHost))
+            {
+                services.AddMqttClientHostedService();
+                services.AddHostedService<MqttRadioInfoPublisher>();
+            }
             services.AddHostedService<RadioManagerService>();
 
             if (portSettings != null)
