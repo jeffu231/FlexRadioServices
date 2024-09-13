@@ -8,7 +8,7 @@
 
 services:
   flex-radio-services:
-    image: ghcr.io/jeffu231/flexradioservices:1.0.0
+    image: ghcr.io/jeffu231/flexradioservices:latest
     container_name: flex-radio-api
     restart: unless-stopped
     ports:
