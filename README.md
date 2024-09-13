@@ -29,4 +29,4 @@ this stage. The code functions for what has been implemented and will likely be 
 
 ## Configuration
 
-The appsettings.json in the source tree is a working example and should give an example of many possibilities.
+The appsettings.user.json in the source tree is a working example of the user settings to establish working CAT ports and MQTT configuration. This file needs to be located in /app/appsettings/appsettings.user.json in the container. The compose file has a volume created in that location to store the file so it can persist and be updated without modifying the source tree.
