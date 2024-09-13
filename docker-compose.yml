@@ -23,10 +23,16 @@ services:
       args:
         - GITHUB_USERNAME=${GITHUB_USERNAME}
         - GITHUB_TOKEN=${GITHUB_TOKEN}
+    volumes:
+      - flex-radio-api-settings:/app/appsettings
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.flex-radio-services-api.rule=Host(`$HOSTNAME`) && (PathPrefix(`/api/frs/`))"
 
 networks:
   traefik-net:
+    external: true
+
+volumes:
+  flex-radio-api-settings:
     external: true

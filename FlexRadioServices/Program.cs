@@ -25,6 +25,8 @@ namespace FlexRadioServices
             API.Init();
             
             var builder = WebApplication.CreateBuilder(args);
+
+            builder.Configuration.AddJsonFile("./appsettings/appsettings.user.json", optional:true, reloadOnChange: true);
             
             builder.Configuration.GetSection("RadioSettings").Bind(AppSettings.RadioSettings);
             builder.Configuration.GetSection("MqttBrokerSettings").Bind(AppSettings.MqttBrokerSettings);
