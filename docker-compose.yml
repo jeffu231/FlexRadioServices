@@ -2,8 +2,7 @@
 # Flex Radio Services
 ################################################################################
 # docker-compose -f docker-compose.yml up -d
-# .env file required with values for GITHUB_USERNAME and GITHUB_TOKEN for Github 
-#      nuget repository read access and HOSTNAME for traefik
+# .env file required with value for HOSTNAME for traefik
 # This is for running in a container with a traefik setup
 ################################################################################
 
@@ -13,8 +12,8 @@ services:
     container_name: flex-radio-api
     restart: unless-stopped
     ports:
-      - "4991-4992:4991-4992/udp"
-      - "6005-6020:6005-6020/tcp"
+      - "4991-4992:4991-4992/udp" # Ports for radio communication
+      - "6005-6020:6005-6020/tcp" # Range of CAT ports defined in appsettings
     networks:
       - traefik-net
     volumes:
