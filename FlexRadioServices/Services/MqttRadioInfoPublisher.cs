@@ -62,31 +62,15 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         if (sender is Slice slice && e.PropertyName != null)
         {
             var prop = System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(e.PropertyName);
-            await _mqttClientService.Publish($"radios/{slice.Radio.Serial}/slice/{slice.Letter}/{prop}", slice.Freq.ToString(CultureInfo.InvariantCulture));
-            //_logger.LogDebug("Slice {Letter} property {PropertyName} for radio {RadioSerial} changed", slice.Letter, e.PropertyName, slice.Radio.Serial);
-            // switch (e.PropertyName)
-            // {
-            //     case "Active":
-            //     case "Freq":
-            //         await _mqttClient.Publish($"radios/{slice.Radio.Serial}/slice/{slice.Letter}/freq", slice.Freq.ToString(CultureInfo.InvariantCulture));
-            //         break;
-            //     case "TuneStep":
-            //     case "RITOn":
-            //     case "XITOn":
-            //     case "RITFreq":
-            //     case "XITFreq":
-            //     case "DemodMode":
-            //     case "IsTransmitSlice":
-            //         var vfoInfo = CreateSliceInfo(slice);
-            //         if (vfoInfo != null)
-            //         {
-            //             OnVfoChanged(vfoInfo);
-            //         }
-            //
-            //         break;
-            // }
+            _logger.LogInformation("Property name {EPropertyName}", e.PropertyName);
+            await _mqttClientService.Publish($"radios/{slice.Radio.Serial}/slice/{slice.Letter}/{prop}", 
+                GetPropValue(slice, e.PropertyName).ToString() ?? string.Empty);
         }
     }
 
+    private static object GetPropValue(object src, string propName)
+    {
+        return src.GetType().GetProperty(propName)?.GetValue(src, null)??string.Empty;
+    }
     
 }
