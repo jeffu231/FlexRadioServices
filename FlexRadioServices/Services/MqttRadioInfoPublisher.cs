@@ -26,6 +26,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
             }
             args.PreviousRadio.Radio.SliceAdded -= RadioOnSliceAdded;
             args.PreviousRadio.Radio.SliceRemoved -= RadioOnSliceRemoved;
+            RemoveRadioMeterListeners(args.PreviousRadio.Radio);
         }
 
         if (ConnectedRadio != null)
@@ -36,6 +37,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
             }
             ConnectedRadio.Radio.SliceAdded += RadioOnSliceAdded;
             ConnectedRadio.Radio.SliceRemoved += RadioOnSliceRemoved;
+            AddRadioMeterListeners(ConnectedRadio.Radio);
         }
     }
 
@@ -72,5 +74,57 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
     {
         return src.GetType().GetProperty(propName)?.GetValue(src, null)??string.Empty;
     }
+
+    private void AddRadioMeterListeners(Radio radio)
+    {
+        radio.VoltsDataReady += RadioOnVoltsDataReady;
+        radio.PATempDataReady += RadioOnPATempDataReady;
+        radio.ForwardPowerDataReady += RadioOnForwardPowerDataReady;
+        radio.ReflectedPowerDataReady += RadioOnReflectedPowerDataReady;
+        radio.SWRDataReady += RadioOnSWRDataReady;
+    }
     
+    private void RemoveRadioMeterListeners(Radio radio)
+    {
+        radio.VoltsDataReady -= RadioOnVoltsDataReady;
+        radio.PATempDataReady -= RadioOnPATempDataReady;
+        radio.ForwardPowerDataReady -= RadioOnForwardPowerDataReady;
+        radio.ReflectedPowerDataReady -= RadioOnReflectedPowerDataReady;
+        radio.SWRDataReady -= RadioOnSWRDataReady;
+    }
+
+    private async void RadioOnSWRDataReady(float data)
+    {
+        if(ConnectedRadio == null) return;
+        await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/swr", 
+            data.ToString(CultureInfo.InvariantCulture));
+    }
+
+    private async void RadioOnReflectedPowerDataReady(float data)
+    {
+        if(ConnectedRadio == null) return;
+        await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/ref_pwr", 
+            data.ToString(CultureInfo.InvariantCulture));
+    }
+
+    private async void RadioOnForwardPowerDataReady(float data)
+    {
+        if(ConnectedRadio == null) return;
+        await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/fwd_pwr", 
+            data.ToString(CultureInfo.InvariantCulture));
+    }
+
+    private async void RadioOnPATempDataReady(float data)
+    {
+        if(ConnectedRadio == null) return;
+        await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/pa_temp", 
+            data.ToString(CultureInfo.InvariantCulture));
+    }
+
+    private async void RadioOnVoltsDataReady(float data)
+    {
+        if(ConnectedRadio == null) return;
+        await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/voltage", 
+            data.ToString(CultureInfo.InvariantCulture));
+    }
 }
