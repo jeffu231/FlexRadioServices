@@ -28,6 +28,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.flex-radio-services-api.rule=Host(`$HOSTNAME`) && (PathPrefix(`/api/frs/`))"
+      - "traefik.http.services.flex-radio-services-api.loadbalancer.server.port=8080"
 
 networks:
   traefik-net:
