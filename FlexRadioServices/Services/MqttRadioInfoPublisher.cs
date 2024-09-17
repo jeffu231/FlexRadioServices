@@ -103,15 +103,21 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
     private async void RadioOnReflectedPowerDataReady(float data)
     {
         if(ConnectedRadio == null) return;
+        //Meter name = REFPWR
+        //Convert dbm to watts
+        var w = ConvertDbmToWatts(data);
         await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/ref_pwr", 
-            data.ToString(CultureInfo.InvariantCulture));
+            w.ToString(CultureInfo.InvariantCulture));
     }
 
     private async void RadioOnForwardPowerDataReady(float data)
     {
         if(ConnectedRadio == null) return;
+        //Meter name = FWDPWR
+        //Convert dbm to watts
+        var w = ConvertDbmToWatts(data);
         await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/fwd_pwr", 
-            data.ToString(CultureInfo.InvariantCulture));
+            w.ToString(CultureInfo.InvariantCulture));
     }
 
     private async void RadioOnPATempDataReady(float data)
@@ -126,5 +132,10 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         if(ConnectedRadio == null) return;
         await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/voltage", 
             data.ToString(CultureInfo.InvariantCulture));
+    }
+
+    private static double ConvertDbmToWatts(float dbm)
+    {
+        return Math.Pow(10, dbm / 10) / 1000;
     }
 }
