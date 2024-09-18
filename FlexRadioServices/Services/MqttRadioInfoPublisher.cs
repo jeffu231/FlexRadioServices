@@ -93,49 +93,75 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         radio.SWRDataReady -= RadioOnSWRDataReady;
     }
 
+    private float _swrLastValue;
     private async void RadioOnSWRDataReady(float data)
     {
         if(ConnectedRadio == null) return;
-        await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/swr", 
-            data.ToString(CultureInfo.InvariantCulture));
+        if (Math.Abs(data - _swrLastValue) > .01f)
+        {
+            _swrLastValue = data;
+            await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/swr",
+                data.ToString(CultureInfo.InvariantCulture));
+        }
     }
 
+    private float _refPwrLastValue;
     private async void RadioOnReflectedPowerDataReady(float data)
     {
         if(ConnectedRadio == null) return;
-        //Meter name = REFPWR
-        //Convert dbm to watts
-        var w = ConvertDbmToWatts(data);
-        await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/ref_pwr", 
-            w.ToString(CultureInfo.InvariantCulture));
+        if (Math.Abs(data - _refPwrLastValue) > .001f)
+        {
+            _refPwrLastValue = data;
+            //Meter name = REFPWR
+            //Convert dbm to watts
+            var w = ConvertDbmToWatts(data);
+            await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/ref_pwr",
+                w.ToString(CultureInfo.InvariantCulture));
+        }
     }
 
+    private float _fwdPwrLastValue;
     private async void RadioOnForwardPowerDataReady(float data)
     {
         if(ConnectedRadio == null) return;
-        //Meter name = FWDPWR
-        //Convert dbm to watts
-        var w = ConvertDbmToWatts(data);
-        await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/fwd_pwr", 
-            w.ToString(CultureInfo.InvariantCulture));
+        if (Math.Abs(data - _fwdPwrLastValue) > .001f)
+        {
+            _fwdPwrLastValue = data;
+            //Meter name = FWDPWR
+            //Convert dbm to watts
+            var w = ConvertDbmToWatts(data);
+            await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/fwd_pwr", 
+                w.ToString(CultureInfo.InvariantCulture));
+        }
     }
 
+    private float _paTempLastValue;
     private async void RadioOnPATempDataReady(float data)
     {
         if(ConnectedRadio == null) return;
-        await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/pa_temp", 
-            data.ToString(CultureInfo.InvariantCulture));
+        if (Math.Abs(data - _paTempLastValue) > .01f)
+        {
+            _paTempLastValue = data;
+            await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/pa_temp",
+                data.ToString(CultureInfo.InvariantCulture));
+        }
     }
 
+    private float _voltsLastValue;
     private async void RadioOnVoltsDataReady(float data)
     {
         if(ConnectedRadio == null) return;
-        await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/voltage", 
-            data.ToString(CultureInfo.InvariantCulture));
+        if (Math.Abs(data - _voltsLastValue) > .01f)
+        {
+            _voltsLastValue = data;
+            await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/voltage",
+                data.ToString(CultureInfo.InvariantCulture));
+        }
     }
 
     private static double ConvertDbmToWatts(float dbm)
     {
+        if (dbm == 0) return 0;
         return Math.Pow(10, dbm / 10) / 1000;
     }
 }

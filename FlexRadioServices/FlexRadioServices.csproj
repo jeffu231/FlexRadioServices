@@ -6,7 +6,8 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
         <RootNamespace>FlexRadioServices</RootNamespace>
-        <Version>1.0.7</Version>
+        <Version>1.0.8
+        </Version>
         <RepositoryUrl>https://github.com/jeffu231/FlexRadioServices</RepositoryUrl>
         <Description>Flex Radio Services - An API to integrate with Flex 6xxx radios</Description>
         <Authors>Jeff Uchitjil</Authors>
