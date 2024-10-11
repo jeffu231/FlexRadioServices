@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using Flex.Smoothlake.FlexLib;
+using FlexRadioServices.Utils;
 
 namespace FlexRadioServices.Services;
 
@@ -16,7 +17,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         _mqttClientService = mqttClientService;
     }
 
-    protected override void ConnectedRadioChanged(object? sender, ConnectedRadioEventArgs args)
+    protected override async void ConnectedRadioChanged(object? sender, ConnectedRadioEventArgs args)
     {
         if (args.PreviousRadio != null)
         {
@@ -37,7 +38,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
             }
             ConnectedRadio.Radio.SliceAdded += RadioOnSliceAdded;
             ConnectedRadio.Radio.SliceRemoved += RadioOnSliceRemoved;
-            AddRadioMeterListeners(ConnectedRadio.Radio);
+            await AddRadioMeterListeners(ConnectedRadio.Radio);
         }
     }
 
@@ -58,31 +59,66 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         _logger.LogDebug("Added slice {Letter} listener for radio {RadioSerial}",slc.Letter, slc.Radio.Serial);
         slc.PropertyChanged += SliceOnPropertyChanged;
     }
-    
     private async void SliceOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (sender is Slice slice && e.PropertyName != null)
-        {
+        {  
             var prop = System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(e.PropertyName);
             _logger.LogInformation("Property name {EPropertyName}", e.PropertyName);
-            await _mqttClientService.Publish($"radios/{slice.Radio.Serial}/slice/{slice.Letter}/{prop}", 
+            var guiClient = slice.Radio.FindGUIClientByClientHandle(slice.ClientHandle);
+            await _mqttClientService.Publish($"radios/{slice.Radio.Serial}/client/{guiClient.ClientID}/slice/{slice.Letter}/{prop}", 
                 GetPropValue(slice, e.PropertyName).ToString() ?? string.Empty);
+            
+            if (e.PropertyName == nameof(Slice.IsTransmitSlice))
+            {
+                if (slice.IsTransmitSlice)
+                {
+                    await PublishTxBandInfo(slice);
+                }
+            }
         }
     }
+    private async Task PublishTxBandInfo(Slice slice)
+    {
+        _logger.LogDebug("Publishing TX BAND info to radio {RadioSerial}", slice.Letter);
+        var guiClient = slice.Radio.FindGUIClientByClientHandle(slice.ClientHandle);
+        await _mqttClientService.Publish($"radios/{slice.Radio.Serial}/client/{guiClient.ClientID}"+
+                                         $"/txslice/{slice.Letter}/txant/{slice.TXAnt}/freq",
+            slice.Freq.ToString(CultureInfo.InvariantCulture));
+        
+        await _mqttClientService.Publish($"radios/{slice.Radio.Serial}/client/{guiClient.ClientID}"+
+                                         $"/txslice/{slice.Letter}/txant/{slice.TXAnt}/band",
+            BandConverter.ConvertToBand(slice.Freq * 1000).ToString(CultureInfo.InvariantCulture));
+    }
 
+    
     private static object GetPropValue(object src, string propName)
     {
         return src.GetType().GetProperty(propName)?.GetValue(src, null)??string.Empty;
     }
 
-    private void AddRadioMeterListeners(Radio radio)
+    private async Task AddRadioMeterListeners(Radio radio)
     {
         radio.VoltsDataReady += RadioOnVoltsDataReady;
         radio.PATempDataReady += RadioOnPATempDataReady;
         radio.ForwardPowerDataReady += RadioOnForwardPowerDataReady;
         radio.ReflectedPowerDataReady += RadioOnReflectedPowerDataReady;
         radio.SWRDataReady += RadioOnSWRDataReady;
+        radio.MainFanDataReady += RadioOnMainFanDataReady;
     }
+
+    private float _fanLastValue;
+    private async void RadioOnMainFanDataReady(float data)
+    {
+        if(ConnectedRadio == null) return;
+        if (Math.Abs(data - _fanLastValue) > .01f)
+        {
+            _fanLastValue = data;
+            await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/mainfan",
+                data.ToString(CultureInfo.InvariantCulture));
+        }
+    }
+
     
     private void RemoveRadioMeterListeners(Radio radio)
     {
@@ -91,6 +127,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         radio.ForwardPowerDataReady -= RadioOnForwardPowerDataReady;
         radio.ReflectedPowerDataReady -= RadioOnReflectedPowerDataReady;
         radio.SWRDataReady -= RadioOnSWRDataReady;
+        radio.MainFanDataReady -= RadioOnMainFanDataReady;
     }
 
     private float _swrLastValue;
