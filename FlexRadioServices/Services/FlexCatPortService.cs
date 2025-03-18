@@ -374,6 +374,9 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             case "IF":
                 response = Parse_IF(input);
                 break;
+            case "KY":
+                response = Parse_KY(input);
+                break;
             case "MD":
                 response = Parse_MD(input);
                 break;
@@ -618,6 +621,22 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             ifResponse = "IF" + freq + tuneStep + ritXitFreq + ritOn + xitOn + "000" + mox + str8 + str9 + "0" + txRx + "0000;";
         }
         return ifResponse;
+    }
+    
+    private string Parse_KY(string command)
+    {
+        string ky = "?;";
+        if (ConnectedRadio != null)
+        {
+            if (command.Length == 2)
+                ky = "KY0;";
+            else if (command.Length > 2 && command.Length < 258)
+            {
+                string s = command.Substring(3).Trim();
+                ConnectedRadio.Radio.GetCWX().Send(s);
+            }
+        }
+        return ky;
     }
     
     private string Parse_MD(string command)
