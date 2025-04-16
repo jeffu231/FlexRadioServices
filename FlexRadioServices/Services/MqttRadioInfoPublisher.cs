@@ -69,7 +69,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
             await _mqttClientService.Publish($"radios/{slice.Radio.Serial}/client/{guiClient.ClientID}/slice/{slice.Letter}/{prop}", 
                 GetPropValue(slice, e.PropertyName).ToString() ?? string.Empty);
             
-            if (e.PropertyName == nameof(Slice.IsTransmitSlice))
+            if (slice.IsTransmitSlice)
             {
                 if (slice.IsTransmitSlice)
                 {
