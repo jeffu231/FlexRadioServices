@@ -374,6 +374,9 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             case "IF":
                 response = Parse_IF(input);
                 break;
+            case "KS":
+                response = Parse_KS(input);
+                break;
             case "KY":
                 response = Parse_KY(input);
                 break;
@@ -621,6 +624,32 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             ifResponse = "IF" + freq + tuneStep + ritXitFreq + ritOn + xitOn + "000" + mox + str8 + str9 + "0" + txRx + "0000;";
         }
         return ifResponse;
+    }
+    
+    private string Parse_KS(string command)
+    {
+        string ks = "?;";
+        if (ConnectedRadio != null)
+        {
+            if (command.Length == 2)
+            {
+                // Flex CAT uses ConnectedRadio.Radio.CWSpeed, but it gets reset to 30 everytime CW is sent and is not synced 
+                // with what the key speed is set to. This logic uses the CWX which seems to mirror what is set on the 
+                // Maestro
+                ks = "KS" + ConnectedRadio.Radio.GetCWX().Speed.ToString("D3") + ";";
+            }
+            else
+            {
+                if (command.Length == 5 && int.TryParse(command.Substring(2), out var result) && result >= 5 && result <= 100)
+                {
+                    ConnectedRadio.Radio.GetCWX().Speed = result;
+                    //ConnectedRadio.Radio.CWSpeed = result; Flex CAT sets this, but it is contantly changed by something 
+                    //else and is 30 most of the time. Not sure what its actual purpose is.
+                    ks = "";
+                }
+            }
+        }
+        return ks;
     }
     
     private string Parse_KY(string command)
