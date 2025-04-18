@@ -64,7 +64,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         if (sender is Slice slice && e.PropertyName != null)
         {  
             var prop = System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(e.PropertyName);
-            _logger.LogInformation("Property name {EPropertyName}", e.PropertyName);
+            _logger.LogDebug("Property name {EPropertyName} changed", e.PropertyName);
             var guiClient = slice.Radio.FindGUIClientByClientHandle(slice.ClientHandle);
             await _mqttClientService.Publish($"radios/{slice.Radio.Serial}/client/{guiClient.ClientID}/slice/{slice.Letter}/{prop}", 
                 GetPropValue(slice, e.PropertyName).ToString() ?? string.Empty);
