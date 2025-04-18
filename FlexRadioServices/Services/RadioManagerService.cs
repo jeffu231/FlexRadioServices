@@ -82,26 +82,27 @@ public class RadioManagerService: ConnectedRadioServiceBase
     
     private void PanadapterOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        //This code is mostly exploratory for now.
         if (sender is Panadapter p && (e.PropertyName == nameof(Panadapter.Band) || e.PropertyName == nameof(Panadapter.XVTR)))
         
         {
-            _logger.LogInformation("Panadapter property {Prop} changed", 
+            _logger.LogDebug("Panadapter property {Prop} changed", 
                 e.PropertyName);
-            if (e.PropertyName == nameof(Panadapter.XVTR))
+            if (e.PropertyName == nameof(Panadapter.XVTR) && ConnectedRadio != null)
             {
-                _logger.LogInformation("XVTR changed");
+                _logger.LogDebug("XVTR changed");
                 var xvtr = ConnectedRadio.Radio.Xvtrs.FirstOrDefault(x => x.Name == p.XVTR);
                 if (xvtr == null)
                 {
-                    _logger.LogInformation("Could not find xvtr for {Name}", p.XVTR);
+                    _logger.LogDebug("Could not find xvtr for {Name}", p.XVTR);
                     return;
                 }
                 foreach (var pan in ConnectedRadio.Radio.PanadapterList.ToList()
                              .Where(x => x != p))
                 {
                     if (string.IsNullOrEmpty(pan.XVTR) || pan.XVTR == p.XVTR) continue;
-                    _logger.LogInformation("Setting Panadapter XVTR from {Old} to {New}", pan.XVTR, p.XVTR);
-                    _logger.LogInformation("Setting Panadapter Band from {Old} to {New}", pan.Band, p.Band);
+                    _logger.LogDebug("Setting Panadapter XVTR from {Old} to {New}", pan.XVTR, p.XVTR);
+                    _logger.LogDebug("Setting Panadapter Band from {Old} to {New}", pan.Band, p.Band);
                     //pan.Band = $"x{xvtr.Index}";
                     
                 }
@@ -117,12 +118,12 @@ public class RadioManagerService: ConnectedRadioServiceBase
             var guiClient = s.Radio.FindGUIClientByClientHandle(s.ClientHandle);
             if (guiClient != null)
             {
-                _logger.LogInformation("{Station}/{Client} Slice {Letter} prop {Prop} changed",
+                _logger.LogDebug("{Station}/{Client} Slice {Letter} prop {Prop} changed",
                     guiClient.Station, guiClient.Program, s.Letter, e.PropertyName);
             }
             else
             {
-                _logger.LogInformation("Client (Null) Slice {Letter} prop {Prop} changed", s.Letter, e.PropertyName);
+                _logger.LogDebug("Client (Null) Slice {Letter} prop {Prop} changed", s.Letter, e.PropertyName);
             }
            
         }
@@ -148,12 +149,12 @@ public class RadioManagerService: ConnectedRadioServiceBase
                 var client = r.FindGUIClientByClientHandle(r.TXClientHandle);
                 if (client != null)
                 {
-                    _logger.LogInformation("TX client handle changed {Station} / {Program} / {ClientId}", 
+                    _logger.LogDebug("TX client handle changed {Station} / {Program} / {ClientId}", 
                         client.Station, client.Program, r.TXClientHandle);
                 }
                 else
                 {
-                    _logger.LogInformation("TX client handle changed {ClientId}", r.TXClientHandle);
+                    _logger.LogDebug("TX client handle changed {ClientId}", r.TXClientHandle);
                 }
                
             }
