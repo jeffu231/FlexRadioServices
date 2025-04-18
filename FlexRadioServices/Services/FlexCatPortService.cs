@@ -662,7 +662,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             else if (command.Length > 2 && command.Length < 258)
             {
                 string s = command.Substring(3).Trim();
-                ConnectedRadio.Radio.GetCWX().Send(s);
+                TransmitCw(s);
             }
         }
         return ky;
@@ -1235,6 +1235,26 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             }
         }
         
+    }
+
+    private void TransmitCw(string message)
+    {
+        if (ConnectedRadio != null && _slice != null)
+        {
+            EnsureTransmitSlice();
+            var ts = TransmitSlice;
+            if (ts != null)
+            {
+                var clientId = GetClientId(ts);
+                
+                if (ConnectedRadio.Radio.BoundClientID != clientId)
+                {
+                    _logger.LogInformation("TX: Switching bound client to {ClientId}", clientId);
+                    ConnectedRadio.Radio.BoundClientID = clientId;
+                }
+                ConnectedRadio.Radio.GetCWX().Send(message);
+            }
+        }
     }
 
     private void EnsureTransmitSlice()
