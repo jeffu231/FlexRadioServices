@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using System.Configuration;
 using System.Diagnostics;
-using CoreServices;
 using Flex.Smoothlake.FlexLib;
 using FlexRadioServices.Models;
 using FlexRadioServices.Models.Ports;

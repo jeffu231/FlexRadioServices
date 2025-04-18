@@ -17,7 +17,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         _mqttClientService = mqttClientService;
     }
 
-    protected override async void ConnectedRadioChanged(object? sender, ConnectedRadioEventArgs args)
+    protected override void ConnectedRadioChanged(object? sender, ConnectedRadioEventArgs args)
     {
         if (args.PreviousRadio != null)
         {
@@ -38,7 +38,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
             }
             ConnectedRadio.Radio.SliceAdded += RadioOnSliceAdded;
             ConnectedRadio.Radio.SliceRemoved += RadioOnSliceRemoved;
-            await AddRadioMeterListeners(ConnectedRadio.Radio);
+            AddRadioMeterListeners(ConnectedRadio.Radio);
         }
     }
 
@@ -97,7 +97,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         return src.GetType().GetProperty(propName)?.GetValue(src, null)??string.Empty;
     }
 
-    private async Task AddRadioMeterListeners(Radio radio)
+    private void AddRadioMeterListeners(Radio radio)
     {
         radio.VoltsDataReady += RadioOnVoltsDataReady;
         radio.PATempDataReady += RadioOnPATempDataReady;

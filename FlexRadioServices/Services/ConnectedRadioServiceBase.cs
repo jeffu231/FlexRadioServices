@@ -115,7 +115,7 @@ public abstract class ConnectedRadioServiceBase: BackgroundService
         }
     }
 
-    protected Slice? ActiveSlice
+    protected virtual Slice? ActiveSlice
     {
         get
         {

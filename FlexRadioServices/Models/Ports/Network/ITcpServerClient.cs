@@ -15,5 +15,5 @@ public interface ITcpServerClient
 
     void Stop();
 
-    TcpClient Client { get; internal set; }
+    TcpClient? Client { get; internal set; }
 }

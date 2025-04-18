@@ -7,6 +7,7 @@ using FlexRadioServices.Events;
 using FlexRadioServices.Models;
 using FlexRadioServices.Models.Ports;
 using FlexRadioServices.Models.Ports.Network;
+using FlexRadioServices.Models.Settings;
 using FlexRadioServices.Utils.Slice;
 
 namespace FlexRadioServices.Services;
@@ -19,7 +20,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
     private CancellationTokenSource? _cancellationToken;
     private Task? _serverTask;
     private Slice? _slice;
-    private Slice? _slice2 = null;
+    private Slice? _slice2;
     private bool _split;  //placeholder
     private readonly ConcurrentQueue<CatCommand> _commandQueue;
     private bool _autoInfo;
@@ -992,7 +993,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             if (command.Length == 4)
             {
                 string demodMode = _slice2.DemodMode;
-                if (demodMode == "CW" && ConnectedRadio.Radio != null && ConnectedRadio.Radio.CWL_Enabled)
+                if (demodMode == "CW" && ConnectedRadio != null && ConnectedRadio.Radio.CWL_Enabled)
                     demodMode = "CWL";
                 zzme = "ZZME" + DemodModeToFlexModeNumber(demodMode).ToString("D2") + ";";
             }
@@ -1109,7 +1110,6 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             if (_slice2 != null && _slice2.IsTransmitSlice)
             {
               zzsw = "ZZSW1;";
-              break;
             }
             break;
           case "ZZSW0":
@@ -1464,7 +1464,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
         }
     }
 
-    private Slice? ActiveSlice
+    protected override Slice? ActiveSlice
     {
         get
         {

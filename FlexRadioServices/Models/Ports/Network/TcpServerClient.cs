@@ -8,7 +8,7 @@ namespace FlexRadioServices.Models.Ports.Network
     public class TcpServerClient: ITcpServerClient
     {
         private string _clientIpAddress = string.Empty;
-        private int _port = 0;
+        private int _port;
         private readonly ILogger<TcpServerClient> _logger;
         
         public TcpServerClient(ILogger<TcpServerClient> logger)

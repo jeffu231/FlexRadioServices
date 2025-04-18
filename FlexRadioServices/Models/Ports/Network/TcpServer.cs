@@ -6,7 +6,7 @@ namespace FlexRadioServices.Models.Ports.Network
     public class TcpServer:ITcpServer
     {
         private TcpListener? _server;
-        private bool _running = false;
+        private bool _running;
         private readonly ILogger<TcpServer> _logger;
         private readonly IServiceProvider _serviceProvider;
         

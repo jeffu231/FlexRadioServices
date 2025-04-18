@@ -1,4 +1,4 @@
-namespace FlexRadioServices.Models.Ports;
+namespace FlexRadioServices.Models.Settings;
 
 public class PortSettings
 {

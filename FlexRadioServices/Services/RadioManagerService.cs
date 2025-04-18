@@ -6,9 +6,8 @@ namespace FlexRadioServices.Services;
 public class RadioManagerService: ConnectedRadioServiceBase
 {
 
-    private ILogger<RadioManagerService> _logger;
-    private CancellationTokenSource? _cancellationToken;
-    private Slice? _lastTxSlice = null;
+    private readonly ILogger<RadioManagerService> _logger;
+    private Slice? _lastTxSlice;
     private bool _lastTxSliceMuteState;
     
     public RadioManagerService(IFlexRadioService flexRadioService, ILogger<RadioManagerService> logger) : base(flexRadioService, logger)
@@ -111,7 +110,7 @@ public class RadioManagerService: ConnectedRadioServiceBase
         }
     }
 
-    private async void SliceOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void SliceOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (sender is Slice s)
         {
