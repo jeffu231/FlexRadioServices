@@ -8,6 +8,7 @@
 
 services:
   flex-radio-services:
+    image: flex-radio-api-dev
     build: 
       context: .
       dockerfile: FlexRadioServices/Dockerfile
