@@ -62,20 +62,31 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
     private async void SliceOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (sender is Slice slice && e.PropertyName != null)
-        {  
-            var prop = System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(e.PropertyName);
-            _logger.LogDebug("Property name {EPropertyName} changed", e.PropertyName);
-            var guiClient = slice.Radio.FindGUIClientByClientHandle(slice.ClientHandle);
-            await _mqttClientService.Publish($"radios/{slice.Radio.Serial}/client/{guiClient.ClientID}/slice/{slice.Letter}/{prop}", 
-                GetPropValue(slice, e.PropertyName).ToString() ?? string.Empty);
-            
-            if (slice.IsTransmitSlice)
+        {
+            try
             {
+                var prop = System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(e.PropertyName);
+                _logger.LogDebug("Property name {EPropertyName} changed", e.PropertyName);
+                var guiClient = slice.Radio.FindGUIClientByClientHandle(slice.ClientHandle);
+                await _mqttClientService.Publish(
+                    $"radios/{slice.Radio.Serial}/client/{guiClient.ClientID}/slice/{slice.Letter}/{prop}",
+                    GetPropValue(slice, e.PropertyName).ToString() ?? string.Empty);
+
                 if (slice.IsTransmitSlice)
                 {
-                    await PublishTxBandInfo(slice);
+                    if (slice.IsTransmitSlice)
+                    {
+                        await PublishTxBandInfo(slice);
+                    }
                 }
             }
+            catch (Exception ex)
+            {
+                //Sometimes this can happen if a slice goes away in the middle of a change
+                //Just log it for now to contain it and determine if some variants occur that are not expected.
+                _logger.LogError(ex, "Error processing Slice Property {EPropertyName} changed", e.PropertyName);
+            }
+            
         }
     }
     private async Task PublishTxBandInfo(Slice slice)
