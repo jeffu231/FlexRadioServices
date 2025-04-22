@@ -12,4 +12,6 @@ public interface ITcpServer
     List<ITcpServerClient> Clients { get; }
 
     Task StartListener(IPAddress ip, int port, CancellationToken cancellationToken);
+    
+    string PortFriendlyName { get; set; }
 }

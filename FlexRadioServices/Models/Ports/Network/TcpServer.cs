@@ -54,6 +54,8 @@ namespace FlexRadioServices.Models.Ports.Network
 
         }
 
+        public string PortFriendlyName { get; set; }
+
         private void NetworkClientOnConnectionClosed(object? sender, EventArgs e)
         {
             if (sender is TcpServerClient c)

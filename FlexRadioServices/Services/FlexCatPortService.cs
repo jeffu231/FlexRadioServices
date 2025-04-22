@@ -46,6 +46,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
             _portSettings.PortFriendlyName, _portSettings.PortNumber);
         _cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _serverTask = _tcpServer.StartListener(IPAddress.Any, _portSettings.PortNumber, cancellationToken);
+        _tcpServer.PortFriendlyName = _portSettings.PortFriendlyName;
         _tcpServer.ClientConnected += TcpServerOnClientConnected;
         _tcpServer.ClientDisconnected += TcpServerOnClientDisconnected;
 
