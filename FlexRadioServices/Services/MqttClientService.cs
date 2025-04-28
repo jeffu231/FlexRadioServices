@@ -31,8 +31,10 @@ public class MqttClientService : IMqttClientService
             .WithTopic($"{AppSettings.MqttBrokerSettings.RootTopic}/{topic}")
             .WithPayload(value)
             .Build();
-        await _mqttClient.PublishAsync(message, CancellationToken.None);
-
+        if (_mqttClient.IsConnected)
+        {
+            await _mqttClient.PublishAsync(message, CancellationToken.None);
+        }
     }
 
     public Task HandleApplicationMessageReceivedAsync(MqttApplicationMessageReceivedEventArgs eventArgs)
@@ -43,7 +45,7 @@ public class MqttClientService : IMqttClientService
 
     public async Task HandleConnectedAsync(MqttClientConnectedEventArgs eventArgs)
     {
-        _logger.LogInformation("connected");
+        _logger.LogInformation("MQTT Client connected");
         await Task.CompletedTask;
         //await mqttClient.SubscribeAsync("hello/world");
     }
@@ -51,7 +53,7 @@ public class MqttClientService : IMqttClientService
     public async Task HandleDisconnectedAsync(MqttClientDisconnectedEventArgs eventArgs)
     {
 
-        _logger.LogInformation("HandleDisconnected");
+        _logger.LogInformation("MQTT Client disconnected: {Reason}", eventArgs.Reason);
 
         #region Reconnect_Using_Event :https: //github.com/dotnet/MQTTnet/blob/master/Samples/Client/Client_Connection_Samples.cs
 
