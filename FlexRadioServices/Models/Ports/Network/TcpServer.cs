@@ -54,7 +54,7 @@ namespace FlexRadioServices.Models.Ports.Network
 
         }
 
-        public string PortFriendlyName { get; set; }
+        public string PortFriendlyName { get; set; } = String.Empty;
 
         private void NetworkClientOnConnectionClosed(object? sender, EventArgs e)
         {
