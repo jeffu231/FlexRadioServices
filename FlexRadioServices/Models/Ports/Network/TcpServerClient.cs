@@ -88,6 +88,10 @@ namespace FlexRadioServices.Models.Ports.Network
         {
             DataReceived?.Invoke(this, new DataReceivedEventArgs {Data = data});
         }
-        
+
+        public override string ToString()
+        {
+            return $"Client {_clientIpAddress} on port {_port}";
+        }
     }
 }
