@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-private var pattern = @"^(?=.{1,90}$)(?:feat|chore|docs|fix|perf|refactor|revert|style|test|wip|ci)(?:\(.+\))*[!?]*(?::).{4,}(?:#\d+)*(?<![\.\s])$";
+private var pattern = @"^(?=.{1,90}$)(?:feat|chore|docs|fix|perf|refactor|revert|style|test|wip|ci|build|log)(?:\(.+\))*[!?]*(?::).{4,}(?:#\d+)*(?<![\.\s])$";
 private var msg = File.ReadAllLines(Args[0])[0];
 if (Regex.IsMatch(msg, pattern))
 return 0;
