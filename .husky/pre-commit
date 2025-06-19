@@ -1,0 +1,5 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo 'Flex Radio Services'
+dotnet husky run --group pre-commit
