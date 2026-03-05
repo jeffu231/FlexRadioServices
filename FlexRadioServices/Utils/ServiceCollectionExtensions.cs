@@ -32,14 +32,11 @@ public static class ServiceCollectionExtensions
             return optionBuilder.Build();
         });
         services.AddSingleton<MqttClientService>();
-        services.AddSingleton<IHostedService>(serviceProvider =>
-        {
-            return serviceProvider.GetService<MqttClientService>()!;
-        });
+        services.AddSingleton<IHostedService>(serviceProvider => serviceProvider.GetService<MqttClientService>()!);
         services.AddSingleton<IMqttClientService>(serviceProvider =>
         {
             var mqttClientService = serviceProvider.GetService<MqttClientService>();
-            return mqttClientService;
+            return mqttClientService ?? throw new InvalidOperationException();
         });
         return services;
     }
