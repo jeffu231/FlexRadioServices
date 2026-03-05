@@ -1,4 +1,22 @@
 BuildTestConsole Changelog
+<a name="1.1.0"></a>
+## [1.1.0](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v1.1.0) (2026-03-05)
+
+### Features
+
+* **Deps:** Upgrade api versoning to replace deprecated libraries ([cf9d136](https://www.github.com/jeffu231/FlexRadioServices/commit/cf9d13680c4587ba484a2db4e2941301382cd234))
+
+### Bug Fixes
+
+* Check resolved service for null to resolve warning ([9501783](https://www.github.com/jeffu231/FlexRadioServices/commit/950178328fbcd0fccf874225513035ee9abdeb13))
+* **Deps:** Bump Config and Swashbuckle deps to latest ([b423ed3](https://www.github.com/jeffu231/FlexRadioServices/commit/b423ed3fac8a4144c660e1923f491bbfeac158cf))
+* **Deps:** Bump MQTT to latest v4 versions ([ac61f2b](https://www.github.com/jeffu231/FlexRadioServices/commit/ac61f2bb268024e1f3667f4d2bbf3523354d47d6))
+
+### Continuous Integration
+
+* **Build:** Update build file to latest deps ([2bf2fa8](https://www.github.com/jeffu231/FlexRadioServices/commit/2bf2fa8d6bba06a3460d6446487003cdd97a9816))
+* **Container:** Update container image description ([0edc95b](https://www.github.com/jeffu231/FlexRadioServices/commit/0edc95b526e925faecdc9d65f5a61a51cff2b0fe))
+
 <a name="1.0.16"></a>
 ## [1.0.16](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v1.0.16) (2026-01-19)
 
