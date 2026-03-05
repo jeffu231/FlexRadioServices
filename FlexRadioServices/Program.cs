@@ -1,16 +1,10 @@
-using System.Collections.Immutable;
-using System.Configuration;
-using System.Diagnostics;
+using Asp.Versioning;
+using Asp.Versioning.ApiExplorer;
 using Flex.Smoothlake.FlexLib;
-using FlexRadioServices.Models;
-using FlexRadioServices.Models.Ports;
 using FlexRadioServices.Models.Ports.Network;
 using FlexRadioServices.Models.Settings;
 using FlexRadioServices.Services;
 using FlexRadioServices.Utils;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ApiExplorer;
-using Microsoft.AspNetCore.Mvc.Versioning;
 
 namespace FlexRadioServices
 {
@@ -88,23 +82,23 @@ namespace FlexRadioServices
             services.Configure<RouteOptions>(options => options.LowercaseUrls = true);
 
         }
-
+        
         private static void ConfigureApiVersioning(WebApplicationBuilder builder)
         {
+            // Add ApiExplorer to discover versions
             builder.Services.AddApiVersioning(options =>
             {
-                options.ReportApiVersions = true;
                 options.DefaultApiVersion = new ApiVersion(1, 0);
                 options.AssumeDefaultVersionWhenUnspecified = true;
+                options.ReportApiVersions = true;
                 options.ApiVersionReader = ApiVersionReader.Combine(new UrlSegmentApiVersionReader(),
                     new HeaderApiVersionReader("x-api-version"));
-            });
-            
-            // Add ApiExplorer to discover versions
-            builder.Services.AddVersionedApiExplorer(setup =>
+            })
+            .AddApiExplorer(options =>
             {
-                setup.GroupNameFormat = "'v'VVV";
-                setup.SubstituteApiVersionInUrl = true;
+                // Configure options for the API explorer
+                options.GroupNameFormat = "'v'VVV"; // Formats the group name for Swagger, e.g., "v1" or "v1.1"
+                options.SubstituteApiVersionInUrl = true; // Automatically replaces {version} in routes
             });
         }
 
