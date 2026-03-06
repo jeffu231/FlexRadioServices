@@ -25,4 +25,4 @@ LICENSE
 README.md
 
 # Ignore user setting example folder
-FlexRadioServices/Example
+**/Example
