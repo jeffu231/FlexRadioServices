@@ -1,4 +1,12 @@
 BuildTestConsole Changelog
+<a name="1.2.1"></a>
+## [1.2.1](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v1.2.1) (2026-03-06)
+
+### Bug Fixes
+
+* **Build:** Ensure Example folder is ommited from build ([d35ef64](https://www.github.com/jeffu231/FlexRadioServices/commit/d35ef64cfd3f1a74c5fcbd342ede06b996951841))
+* **Docs:** Update api docs ([8dd2358](https://www.github.com/jeffu231/FlexRadioServices/commit/8dd23586dec191096b2de12bd8a9e4338fbf964d))
+
 <a name="1.2.0"></a>
 ## [1.2.0](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v1.2.0) (2026-03-06)
 
