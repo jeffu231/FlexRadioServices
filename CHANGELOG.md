@@ -1,4 +1,11 @@
 BuildTestConsole Changelog
+<a name="1.1.1"></a>
+## [1.1.1](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v1.1.1) (2026-03-06)
+
+### Bug Fixes
+
+* **api:** Isolate using the Flexlib objects in api endpoint ([692fc2b](https://www.github.com/jeffu231/FlexRadioServices/commit/692fc2b5fbc25f9c6ecba600f0f9d408f8cebdb8))
+
 <a name="1.1.0"></a>
 ## [1.1.0](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v1.1.0) (2026-03-05)
 
