@@ -1,4 +1,11 @@
 BuildTestConsole Changelog
+<a name="1.2.0"></a>
+## [1.2.0](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v1.2.0) (2026-03-06)
+
+### Features
+
+* **FlexLib:** Update to v4.1.5 of Flexlib ([4e4d3d6](https://www.github.com/jeffu231/FlexRadioServices/commit/4e4d3d628db41e5cbc2ec1b318e2ef384a2ee6b4))
+
 <a name="1.1.1"></a>
 ## [1.1.1](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v1.1.1) (2026-03-06)
 
