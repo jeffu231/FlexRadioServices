@@ -15,22 +15,34 @@ public class SliceProxy
     [JsonIgnore]
     internal Slice Slice => _flexSlice;
 
+    /// <summary>
+    /// Client handle of the GUI client that owns the Slice.
+    /// </summary>
     public uint ClientHandle => _flexSlice.ClientHandle;
 
     public string Owner => _flexSlice.Owner;
 
+    /// <summary>
+    /// Gets or sets whether the Slice is the transmit slice on the GUI client.
+    /// </summary>
     public bool IsTransmitSlice
     {
         get => _flexSlice.IsTransmitSlice;
         set => _flexSlice.IsTransmitSlice = value;
     }
     
+    /// <summary>
+    /// Gets or sets whether the Slice is the Active Slice.
+    /// </summary>
     public bool Active
     {
         get => _flexSlice.Active;
         set => _flexSlice.Active = value;
     }
 
+    /// <summary>
+    /// Gets the slice index of the Slice.
+    /// </summary>
     public int Index => _flexSlice.Index;
 
     [RegularExpression(@"^[A-E]$", ErrorMessage = "Slice letter must be A - E")]
@@ -48,6 +60,10 @@ public class SliceProxy
         set => _flexSlice.TuneStep = value;
     }
 
+    /// <summary>
+    /// Gets or sets the demodulation mode for the slice as a string: 
+    /// "USB", "DIGU", "LSB", "DIGL", "CW", "DSB", "AM", "SAM", "FM"
+    /// </summary>
     public string Mode
     {
         get => _flexSlice.DemodMode ?? string.Empty;
@@ -126,12 +142,19 @@ public class SliceProxy
         set => _flexSlice.AudioGain = value;
     }
 
+    /// <summary>
+    /// Gets or sets the left-right pan for the Slice audio from 0 to 100.  
+    /// A value of 50 pans evenly between left and right.
+    /// </summary>
     public int AudioPan
     {
         get => _flexSlice.AudioPan;
         set => _flexSlice.AudioPan = value;
     }
 
+    /// <summary>
+    /// Gets or sets the current AGC mode for the Slice.
+    /// </summary>
     [JsonConverter(typeof(StringEnumConverter))]
     public AGCMode AGCMode
     {
@@ -144,15 +167,7 @@ public class SliceProxy
         get => _flexSlice.AGCOffLevel;
         set => _flexSlice.AGCOffLevel = value;
     }
-    // {
-    //   get
-    //   {
-    //     if (this._flexSlice == null)
-    //       return string.Empty;
-    //     return this._flexSlice.AGCMode == AGCMode.Off ? this._flexSlice.AGCOffLevel.ToString() : this._flexSlice.AGCThreshold.ToString();
-    //   }
-    // }
-
+    
     public int AGCThreshold
     {
         get => _flexSlice.AGCThreshold;
@@ -165,6 +180,10 @@ public class SliceProxy
         set => _flexSlice.DiversityOn = value;
     }
 
+    /// <summary>
+    /// Gets or sets whether the Slice is locked.  When locked, 
+    /// the Slice frequency cannot be changed.
+    /// </summary>
     public bool Lock
     {
         get => _flexSlice.Lock;
@@ -221,6 +240,9 @@ public class SliceProxy
         set => _flexSlice.FilterLow = value;
     }
 
+    /// <summary>
+    /// Gets Sets the RFGain on the Panadapter this Slice is attached to. 
+    /// </summary>
     public int RFGain
     {
         get => _flexSlice.Panadapter.RFGain;
@@ -233,12 +255,19 @@ public class SliceProxy
         set => _flexSlice.RXAnt = value;
     }
 
+    /// <summary>
+    /// Gets or sets the transmit antenna for the slice as a string:
+    /// "ANT1", "ANT2", "XVTR"
+    /// </summary>
     public string TXAnt
     {
         get => _flexSlice.TXAnt;
         set => _flexSlice.TXAnt = value;
     }
 
+    /// <summary>
+    ///  Gets or sets the bandwidth for the Panadapter this slice is attached to.
+    /// </summary>
     public double Pan
     {
         get => _flexSlice.Panadapter.Bandwidth * 1000.0;
@@ -251,22 +280,18 @@ public class SliceProxy
         set => _flexSlice.Panadapter.Band = value;
     }
 
+    /// <summary>
+    /// Xvtr setting for the Panadapter this slice is attached to.
+    /// </summary>
     public string XVTR
     {
         get => _flexSlice.Panadapter.XVTR;
         set => _flexSlice.Panadapter.XVTR = value;
     }
-    // {
-    //   get
-    //   {
-    //     if (this._flexSlice == null)
-    //       return string.Empty;
-    //     if (this._flexSlice.Panadapter.Band == \u0023\u003DzMojhtdNimdXEGJzxoUsBJobsYbW0.\u0023\u003DzxHQnTr0\u003D(-1467668293))
-    //       return \u0023\u003DzMojhtdNimdXEGJzxoUsBJobsYbW0.\u0023\u003DzxHQnTr0\u003D(-1467668268);
-    //     return !(this._flexSlice.Panadapter.Band == \u0023\u003DzMojhtdNimdXEGJzxoUsBJobsYbW0.\u0023\u003DzxHQnTr0\u003D(-1467668318)) ? this._flexSlice.Panadapter.Band : \u0023\u003DzMojhtdNimdXEGJzxoUsBJobsYbW0.\u0023\u003DzxHQnTr0\u003D(-1467668258);
-    //   }
-    // }
-
+    
+    /// <summary>
+    /// Gets or sets the DAX Channel for the Slice, from 0 to 8
+    /// </summary>
     public int DAXChannel
     {
         get => this._flexSlice.DAXChannel;

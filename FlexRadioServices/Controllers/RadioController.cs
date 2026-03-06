@@ -36,6 +36,10 @@ public class RadioController: ControllerBase
         return Ok(new { ApplicationVersion = version });
     }
     
+    /// <summary>
+    /// Get a list of all discovered radios.
+    /// </summary>
+    /// <returns>A List of type <see cref="RadioProxy">Radio</see></returns>
     [HttpGet("radios")]
     [MapToApiVersion("1.0")]
     public async Task<IActionResult> Radios()
@@ -43,6 +47,11 @@ public class RadioController: ControllerBase
         return await Task.FromResult(Ok(_flexRadioService.DiscoveredRadios.ToList()));
     }
     
+    /// <summary>
+    /// Connects a radio.
+    /// </summary>
+    /// <param name="id">The id of the radio.</param>
+    /// <returns>Result</returns>
     [HttpPost("radios/{id}/connect")]
     [MapToApiVersion("1.0")]
     public IActionResult Connect(string id)
@@ -61,6 +70,11 @@ public class RadioController: ControllerBase
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
     
+    /// <summary>
+    /// Disconnects a radio.
+    /// </summary>
+    /// <param name="id">The id of the radio.</param>
+    /// <returns>Result</returns>
     [HttpPost("radios/{id}/disconnect")]
     [MapToApiVersion("1.0")]
     public IActionResult Disconnect(string id)
@@ -73,12 +87,17 @@ public class RadioController: ControllerBase
                 return Ok("Already disconnected");
             }
             _flexRadioService.DisconnectRadio(radio);
-            return Ok("Connected");
+            return Ok("Disconnected");
         }
         
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
     
+    /// <summary>
+    /// Get all GUI clients for a specific radio.
+    /// </summary>
+    /// <param name="id">The id of the radio.</param>
+    /// <returns>A List of type <see cref="RadioClientProxy">RadioClient</see></returns>
     [HttpGet("radios/{id}/clients")]
     [MapToApiVersion("1.0")]
     public IActionResult Clients(string id)
@@ -93,6 +112,11 @@ public class RadioController: ControllerBase
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
     
+    /// <summary>
+    /// Get all slices for a specific radio regardless of the client.
+    /// </summary>
+    /// <param name="id">The id of the radio.</param>
+    /// <returns>A List of type <see cref="SliceProxy">Slice</see></returns>
     [HttpGet("radios/{id}/slices")]
     [MapToApiVersion("1.0")]
     public IActionResult Slices(string id)
@@ -107,6 +131,12 @@ public class RadioController: ControllerBase
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
     
+    /// <summary>
+    /// Get all slices for a specific client.
+    /// </summary>
+    /// <param name="id">The id of the radio.</param>
+    /// <param name="clientId">The client id on the radio.</param>
+    /// <returns>A List of type <see cref="SliceProxy">Slice</see></returns>
     [HttpGet("radios/{id}/{clientId}/slices")]
     [MapToApiVersion("1.0")]
     public IActionResult Slices(string id, string clientId)
@@ -126,6 +156,13 @@ public class RadioController: ControllerBase
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
     
+    /// <summary>
+    /// Get a specific slice.
+    /// </summary>
+    /// <param name="id">The id of the radio.</param>
+    /// <param name="clientId">The client id on the radio.</param>
+    /// <param name="letter">The Slice letter identifier within the client.</param>
+    /// <returns><see cref="SliceProxy">Slice</see> Information about the Slice requested.</returns>
     [HttpGet("radios/{id}/{clientId}/slices/{letter}")]
     [MapToApiVersion("1.0")]
     public IActionResult Slice(string id, string clientId, [SliceLetter] string letter)
@@ -154,6 +191,14 @@ public class RadioController: ControllerBase
 
     }
     
+    /// <summary>
+    /// Patches a slice using a JSON Patch document.
+    /// </summary>
+    /// <param name="id">The radio id.</param>
+    /// <param name="clientId">The client id the slice you want to patch is located on.</param>
+    /// <param name="letter">The Slice letter identifier within the client.</param>
+    /// <param name="slicePatch">JSON Patch document</param>
+    /// <returns>Status</returns>
     [HttpPatch("radios/{id}/{clientId}/slices/{letter}")]
     [MapToApiVersion("1.0")]
     public IActionResult PatchSlice(string id, string clientId, [SliceLetter] string letter, 
