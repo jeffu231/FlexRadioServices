@@ -1,11 +1,12 @@
+using System.Reflection;
 using Asp.Versioning;
-using Flex.Smoothlake.FlexLib;
 using FlexRadioServices.Attributes;
 using FlexRadioServices.Models;
 using FlexRadioServices.Services;
 using FlexRadioServices.Utils;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
+using Spot = FlexRadioServices.Models.Spot;
 
 namespace FlexRadioServices.Controllers;
 
@@ -21,6 +22,18 @@ public class RadioController: ControllerBase
     {
         _logger = logger;
         _flexRadioService = flexRadioService;
+    }
+    
+    /// <summary>
+    /// Get the version of the application
+    /// </summary>
+    /// <returns>Application Version</returns>
+    [HttpGet("version")]
+    [MapToApiVersion("1.0")]
+    public IActionResult GetVersion()
+    {
+        var version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString();
+        return Ok(new { ApplicationVersion = version });
     }
     
     [HttpGet("radios")]
@@ -173,6 +186,12 @@ public class RadioController: ControllerBase
 
     }
 
+    /// <summary>
+    /// Submits a list of spots to the specified radio.
+    /// </summary>
+    /// <param name="id">The unique identifier of the radio. (Not the client id)</param>
+    /// <param name="spots">A List of type <see cref="FlexRadioServices.Models.Spot">Spot</see> to be submitted.</param>
+    /// <returns>A response indicating the result of the operation.</returns>
     [HttpPost("radios/{id}/spots")]
     public IActionResult Spot(string id, [FromBody] List<Spot> spots)
     {
@@ -183,7 +202,24 @@ public class RadioController: ControllerBase
             {
                 foreach (var spot in spots)
                 {
-                    radioProxy.Radio.RequestSpot(spot);
+                    //TODO use an automapper library to do this in the future
+                    var flexSpot = new Flex.Smoothlake.FlexLib.Spot
+                    {
+                        Callsign = spot.Callsign,
+                        RXFrequency = spot.RxFrequency,
+                        TXFrequency = spot.TxFrequency,
+                        Mode = spot.Mode,
+                        Color = spot.Color,
+                        BackgroundColor = spot.BackgroundColor,
+                        Source = spot.Source,
+                        SpotterCallsign = spot.SpotterCallsign,
+                        LifetimeSeconds = spot.LifetimeSeconds,
+                        Timestamp = spot.Timestamp,
+                        Comment = spot.Comment,
+                        Priority = spot.Priority,
+                        TriggerAction = spot.TriggerAction
+                    };
+                    radioProxy.Radio.RequestSpot(flexSpot);
                 }
 
                 return Ok();

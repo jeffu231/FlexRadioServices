@@ -27,5 +27,5 @@ ENTRYPOINT ["dotnet", "FlexRadioServices.dll"]
 EXPOSE 8080
 
 LABEL org.opencontainers.image.source=https://github.com/jeffu231/FlexRadioServices
-LABEL org.opencontainers.image.description="Flex Radio Services - An API to integrate with Flex 6xxx radios"
+LABEL org.opencontainers.image.description="Flex Radio Services - An API to integrate with Flex radios"
 LABEL org.opencontainers.image.licenses=MIT
