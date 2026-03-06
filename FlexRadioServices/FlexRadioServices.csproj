@@ -26,7 +26,7 @@
     <ItemGroup>
       <PackageReference Include="Asp.Versioning.Mvc" Version="8.1.1" />
       <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.1" />
-      <PackageReference Include="FlexLib" Version="3.6.8.1" />
+      <PackageReference Include="FlexLib" Version="4.1.5" />
       <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="7.0.5" />
       <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.3" />
       <PackageReference Include="MQTTnet" Version="4.3.7.1207" />
