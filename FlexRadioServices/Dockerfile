@@ -22,10 +22,10 @@ RUN dotnet publish "FlexRadioServices.csproj" -c Release -o /app/publish /p:UseA
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "FlexRadioServices.dll"]
 
 EXPOSE 8080
 
-LABEL org.opencontainers.image.source=https://github.com/jeffu231/FlexRadioServices
-LABEL org.opencontainers.image.description="Flex Radio Services - An API to integrate with Flex radios"
-LABEL org.opencontainers.image.licenses=MIT
+ENTRYPOINT ["dotnet", "FlexRadioServices.dll"]
+
+
+
