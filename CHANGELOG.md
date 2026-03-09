@@ -1,4 +1,27 @@
 BuildTestConsole Changelog
+<a name="2.0.0"></a>
+## [2.0.0](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v2.0.0) (2026-03-09)
+
+### Features
+
+* **Settings:** Add Configuration API ([16df08f](https://www.github.com/jeffu231/FlexRadioServices/commit/16df08fed5276b9d1bb5bf1259e59a4d5cd7e20c))
+
+### Bug Fixes
+
+* **Docker:** Update docker dev file documentation ([92af8e3](https://www.github.com/jeffu231/FlexRadioServices/commit/92af8e33e260277b23cf00143cb3b986e06f1162))
+* **Docker:** Update dockerfile to remove redundant labels ([883e0de](https://www.github.com/jeffu231/FlexRadioServices/commit/883e0de18168cb3ebe97fee3c6718b12b89ea14c))
+* **Docs:** Fix service name in Swagger UI ([ddbb4a5](https://www.github.com/jeffu231/FlexRadioServices/commit/ddbb4a559e8ba3e1801930a171c285c898ccd3ef))
+* **Hygiene:** Clean up unused usings ([d921ee1](https://www.github.com/jeffu231/FlexRadioServices/commit/d921ee133c9f6b972d6a1685e67c4717b12df350))
+* **Logging:** Improve error logging in the Radio API ([988e3e2](https://www.github.com/jeffu231/FlexRadioServices/commit/988e3e224656af9131ee947e7375d84b3111fbb1))
+
+### Documentation
+
+* **API:** Improve API Documentation for Swagger ([e3b1013](https://www.github.com/jeffu231/FlexRadioServices/commit/e3b1013e4f606810c2c243babfe440bf204b1098))
+
+### Breaking Changes
+
+* **Settings:** Add Configuration API ([16df08f](https://www.github.com/jeffu231/FlexRadioServices/commit/16df08fed5276b9d1bb5bf1259e59a4d5cd7e20c))
+
 <a name="1.2.1"></a>
 ## [1.2.1](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v1.2.1) (2026-03-06)
 
