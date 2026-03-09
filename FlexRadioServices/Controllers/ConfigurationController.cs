@@ -32,6 +32,8 @@ public class ConfigurationController:ControllerBase
     /// <returns>Application Version</returns>
     [HttpGet("version")]
     [MapToApiVersion("1.0")]
+    [ProducesResponseType(typeof(string), (int)HttpStatusCode.OK)]
+    [Produces("application/json")]
     public IActionResult GetVersion()
     {
         var version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString();
