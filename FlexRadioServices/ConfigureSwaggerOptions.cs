@@ -48,7 +48,7 @@ public class ConfigureSwaggerOptions : IConfigureNamedOptions<SwaggerGenOptions>
     {
         var info = new OpenApiInfo
         {
-            Title = "Amateur Radio Web API",
+            Title = "Flex Radio Services Web API",
             Version = desc.ApiVersion.ToString()
         };
 
