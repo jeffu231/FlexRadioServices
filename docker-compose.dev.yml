@@ -1,14 +1,17 @@
 ################################################################################
 # Flex Radio Services
 ################################################################################
-# docker-compose -f docker-compose.yml -f docker-compose-dev.yml -p flex-radio-services up -d 
+# Use in conjunction with docker-compose.yml for local development
 # .env file required with values for GITHUB_USERNAME and GITHUB_TOKEN for Github 
 #      nuget repository read access
+################################################################################
+# docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 ################################################################################
 
 services:
   flex-radio-services:
     image: flex-radio-api-dev
+    container_name: flex-radio-api-dev
     build: 
       context: .
       dockerfile: FlexRadioServices/Dockerfile
