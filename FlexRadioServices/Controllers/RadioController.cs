@@ -60,6 +60,7 @@ public class RadioController: ControllerBase
             return Ok("Connected");
         }
         
+        _logger.LogError("Radio {Id} not found", id);
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
     
@@ -86,6 +87,7 @@ public class RadioController: ControllerBase
             return Ok("Disconnected");
         }
         
+        _logger.LogError("Radio {Id} not found", id);
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
     
@@ -110,9 +112,12 @@ public class RadioController: ControllerBase
                 var clients = radioProxy.Radio.GuiClients.Select(c => new RadioClientProxy(c));
                 return Ok(clients);
             }
-            return Problem("Radio not connected", statusCode: 503);
+            
+            _logger.LogError("Radio {Id} not found", id);
+            return Problem($"Radio {id} not connected", statusCode: 503);
         }
 
+        _logger.LogError("Radio {Id} not found", id);
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
     
@@ -137,9 +142,12 @@ public class RadioController: ControllerBase
                 var slices = radioProxy.Radio.SliceList.Select(s => new SliceProxy(s));
                 return Ok(slices);
             }
-            return Problem("Radio not connected", statusCode: 503);
+            
+            _logger.LogError("Radio {Id} not connected", id);
+            return Problem($"Radio {id} not connected", statusCode: 503);
         }
 
+        _logger.LogError("Radio {Id} not found", id);
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
     
@@ -172,9 +180,12 @@ public class RadioController: ControllerBase
                     .Select(s => new SliceProxy(s));
                 return Ok(slices);
             }
+            
+            _logger.LogError("Radio {Id} not connected", id);
             return Problem("Radio not connected", statusCode: 503);
         }
 
+        _logger.LogError("Radio {Id} not found", id);
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
     
@@ -214,9 +225,12 @@ public class RadioController: ControllerBase
 
                 return NotFound();
             }
+            
+            _logger.LogError("Radio {Id} not connected", id);
             return Problem($"Radio not connected", statusCode: 503);
         }
         
+        _logger.LogError("Radio {Id} not found", id);
         return Problem($"Radio {id} not found.", statusCode: 404);
 
     }
@@ -261,12 +275,16 @@ public class RadioController: ControllerBase
                     return Ok(slice);
                 }
                 
+                _logger.LogError("Slice {Letter} not found", letter);
                 return Problem($"Slice {letter} not found.", statusCode: 404);
             }
 
+            _logger.LogError("Radio {Id} not connected", id);
+            _logger.LogError("Radio {Id} not connected", id);
             return Problem($"Radio not connected", statusCode: 503);
         }
 
+        _logger.LogError("Radio {Id} not found", id);
         return Problem($"Radio {id} not found.", statusCode: 404);
 
     }
@@ -313,9 +331,11 @@ public class RadioController: ControllerBase
                 return Ok();
             }
             
+            _logger.LogError("Radio {Id} not connected", id);
             return Problem($"Radio {id} not connected", statusCode:503);
         }
         
+        _logger.LogError("Radio {Id} not found", id);
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
     
@@ -335,9 +355,11 @@ public class RadioController: ControllerBase
                 return Ok();
             }
             
+            _logger.LogError("Radio {Id} not connected", id);
             return Problem($"Radio {id} not connected", statusCode:503);
         }
         
+        _logger.LogError("Radio {Id} not found", id);
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
     
@@ -357,13 +379,14 @@ public class RadioController: ControllerBase
             if (radioProxy.Connected)
             {
                 radioProxy.Radio.RemoveSpot(callsign, frequency);
-
                 return Ok();
             }
             
+            _logger.LogError("Radio {Id} not connected", id);
             return Problem($"Radio {id} not connected", statusCode:503);
         }
         
+        _logger.LogError("Radio {Id} not found", id);
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
 }
