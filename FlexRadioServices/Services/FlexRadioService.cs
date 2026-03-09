@@ -4,6 +4,7 @@ using Flex.Smoothlake.FlexLib;
 using Flex.UiWpfFramework.Mvvm;
 using FlexRadioServices.Models;
 using FlexRadioServices.Models.Settings;
+using Microsoft.Extensions.Options;
 
 namespace FlexRadioServices.Services
 {
@@ -12,13 +13,15 @@ namespace FlexRadioServices.Services
         private readonly ILogger _logger;
         private readonly Object _radioListLockObject = new object();
         private RadioProxy? _connectedRadio;
-        private string _preferredRadio;
+        private readonly string _preferredRadio;
+        private readonly IOptions<RadioSettings> _radioSettings;
 
-        public FlexRadioService(ILogger<FlexRadioService> logger)
+        public FlexRadioService(ILogger<FlexRadioService> logger, IOptions<RadioSettings> radioSettings)
         {
             _logger = logger;
+            _radioSettings = radioSettings;
             DiscoveredRadios = new ObservableCollection<RadioProxy>();
-            _preferredRadio = AppSettings.RadioSettings.PreferredRadioIdentifier ?? string.Empty;
+            _preferredRadio = radioSettings.Value.PreferredRadioIdentifier ?? string.Empty;
             foreach (var radio in API.RadioList)
             {
                 OnRadioAdded(radio);
@@ -39,7 +42,7 @@ namespace FlexRadioServices.Services
                     var radioProxy = new RadioProxy(radio);
                     radioProxy.PropertyChanged += RadioOnPropertyChanged;
                     DiscoveredRadios.Add(radioProxy);
-                    if (radioProxy.Serial == _preferredRadio && AppSettings.RadioSettings.AutoConnect)
+                    if (radioProxy.Serial == _preferredRadio && _radioSettings.Value.AutoConnect)
                     {
                         radioProxy.Radio.Connect();
                     }

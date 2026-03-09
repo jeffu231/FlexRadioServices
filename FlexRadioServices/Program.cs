@@ -21,13 +21,7 @@ namespace FlexRadioServices
             
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.Configuration.AddJsonFile("./appsettings/appsettings.user.json", optional:true, reloadOnChange: true);
-            
-            builder.Configuration.GetSection("RadioSettings").Bind(AppSettings.RadioSettings);
-            builder.Configuration.GetSection("MqttBrokerSettings").Bind(AppSettings.MqttBrokerSettings);
-            var ports = builder.Configuration.GetSection("CatPorts").Get<PortSettings[]>();
-            
-            ConfigureServices(builder.Services, ports);
+            ConfigureServices(builder);
 
             ConfigureApiVersioning(builder);
             
@@ -47,20 +41,35 @@ namespace FlexRadioServices
             
             app.Run();
         }
-
-        private static void ConfigureServices(IServiceCollection services, PortSettings[]? portSettings)
+        
+        private static void ConfigureServices(WebApplicationBuilder builder)
         {
-            //services.AddSingleton<RadioState>();
+            
+            builder.Configuration.AddJsonFile("./appsettings/appsettings.user.json", optional:true, reloadOnChange: true);
+            var services = builder.Services;
+            builder.Services.Configure<RadioSettings>(builder.Configuration.GetSection("RadioSettings"));
+            builder.Services.Configure<MqttBrokerSettings>(builder.Configuration.GetSection("MqttBrokerSettings"));
+            builder.Services.Configure<CatPortSettings>(builder.Configuration.GetSection("CatPorts"));
+            
             services.AddSingleton<IFlexRadioService, FlexRadioService>();
             services.AddTransient<ITcpServerClient, TcpServerClient>();
             services.AddTransient<ITcpServer, TcpServer>();
-            if (!string.IsNullOrEmpty(AppSettings.MqttBrokerSettings.BrokerHost))
+            
+            var mqttBrokerSettings = builder.Configuration
+                .GetSection("MqttBrokerSettings")
+                .Get<MqttBrokerSettings>();
+            
+            if (mqttBrokerSettings != null && !string.IsNullOrEmpty(mqttBrokerSettings.BrokerHost))
             {
-                services.AddMqttClientHostedService();
+                services.AddMqttClientHostedService(mqttBrokerSettings);
                 services.AddHostedService<MqttRadioInfoPublisher>();
             }
             services.AddHostedService<RadioManagerService>();
 
+            var portSettings = builder.Configuration
+                .GetSection("CatPorts")
+                .Get<CatPortSettings>()?
+                .PortSettings;
             if (portSettings != null)
             {
                 foreach (var portSetting in portSettings)
@@ -78,7 +87,7 @@ namespace FlexRadioServices
             {
                 o.RespectBrowserAcceptHeader = true;
                 o.ReturnHttpNotAcceptable = true;
-            }).AddNewtonsoftJson().AddXmlSerializerFormatters();
+            }).AddNewtonsoftJson();
 
             services.Configure<RouteOptions>(options => options.LowercaseUrls = true);
 
@@ -138,6 +147,3 @@ namespace FlexRadioServices
     }
 
 }
-
-
-

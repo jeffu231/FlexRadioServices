@@ -1,6 +1,6 @@
 namespace FlexRadioServices.Models.Settings;
 
-public class PortSettings
+public record PortSettings
 {
     public string PortFriendlyName { get; set; } = "Not Named";
     

@@ -1,4 +1,5 @@
 using FlexRadioServices.Models.Settings;
+using Microsoft.Extensions.Options;
 using MQTTnet;
 using MQTTnet.Client;
 
@@ -8,11 +9,14 @@ public class MqttClientService : IMqttClientService
 {
     private readonly IMqttClient _mqttClient;
     private readonly MqttClientOptions _options;
+    private readonly IOptions<MqttBrokerSettings> _mqttBrokerSettings;
     private readonly ILogger<MqttClientService> _logger;
 
-    public MqttClientService(MqttClientOptions options, ILogger<MqttClientService> logger)
+    public MqttClientService(MqttClientOptions options, ILogger<MqttClientService> logger, 
+        IOptions<MqttBrokerSettings> mqttBrokerSettings)
     {
-        this._options = options;
+        _options = options;
+        _mqttBrokerSettings = mqttBrokerSettings;
         _mqttClient = new MqttFactory().CreateMqttClient();
         _logger = logger;
         ConfigureMqttClient();
@@ -28,7 +32,7 @@ public class MqttClientService : IMqttClientService
     public async Task Publish(string topic, string value)
     {
         var message = new MqttApplicationMessageBuilder()
-            .WithTopic($"{AppSettings.MqttBrokerSettings.RootTopic}/{topic}")
+            .WithTopic($"{_mqttBrokerSettings.Value.RootTopic}/{topic}")
             .WithPayload(value)
             .Build();
         if (_mqttClient.IsConnected)

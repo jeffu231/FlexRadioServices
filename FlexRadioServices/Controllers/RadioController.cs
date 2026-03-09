@@ -25,18 +25,6 @@ public class RadioController: ControllerBase
     }
     
     /// <summary>
-    /// Get the version of the application
-    /// </summary>
-    /// <returns>Application Version</returns>
-    [HttpGet("version")]
-    [MapToApiVersion("1.0")]
-    public IActionResult GetVersion()
-    {
-        var version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString();
-        return Ok(new { ApplicationVersion = version });
-    }
-    
-    /// <summary>
     /// Get a list of all discovered radios.
     /// </summary>
     /// <returns>A List of type <see cref="RadioProxy">Radio</see></returns>

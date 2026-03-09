@@ -6,17 +6,17 @@ namespace FlexRadioServices.Utils;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddMqttClientHostedService(this IServiceCollection services)
+    public static IServiceCollection AddMqttClientHostedService(this IServiceCollection services, MqttBrokerSettings mqttBrokerSettings)
     {
-        if (!string.IsNullOrEmpty(AppSettings.MqttBrokerSettings.BrokerHost))
+        if (!string.IsNullOrEmpty(mqttBrokerSettings.BrokerHost))
         {
             services.AddMqttClientServiceWithConfig(aspOptionBuilder =>
             {
                 aspOptionBuilder
-                    .WithCredentials(AppSettings.MqttBrokerSettings.ClientUser,
-                        AppSettings.MqttBrokerSettings.ClientPassword)
-                    .WithClientId(AppSettings.MqttBrokerSettings.ClientId)
-                    .WithTcpServer(AppSettings.MqttBrokerSettings.BrokerHost, AppSettings.MqttBrokerSettings.BrokerPort);
+                    .WithCredentials(mqttBrokerSettings.ClientUser,
+                        mqttBrokerSettings.ClientPassword)
+                    .WithClientId(mqttBrokerSettings.ClientId)
+                    .WithTcpServer(mqttBrokerSettings.BrokerHost, mqttBrokerSettings.BrokerPort);
             });
         }
         
