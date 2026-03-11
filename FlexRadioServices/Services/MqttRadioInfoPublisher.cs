@@ -20,16 +20,17 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
     }
 
     protected override void ConnectedRadioChanged(object? sender, ConnectedRadioEventArgs args)
-    {
-        if (args.PreviousRadio != null)
+    {   
+        var previousRadio = args.PreviousRadio?.Radio;
+        if (previousRadio != null)
         {
-            foreach (var slice in args.PreviousRadio.Radio.SliceList)
+            foreach (var slice in previousRadio.SliceList)
             {
                 RadioOnSliceRemoved(slice);
             }
-            args.PreviousRadio.Radio.SliceAdded -= RadioOnSliceAdded;
-            args.PreviousRadio.Radio.SliceRemoved -= RadioOnSliceRemoved;
-            RemoveRadioMeterListeners(args.PreviousRadio.Radio);
+            previousRadio.SliceAdded -= RadioOnSliceAdded;
+            previousRadio.SliceRemoved -= RadioOnSliceRemoved;
+            RemoveRadioMeterListeners(previousRadio);
         }
 
         if (ConnectedRadio != null)
@@ -102,7 +103,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
                 var guiClient = slice.Radio.FindGUIClientByClientHandle(slice.ClientHandle);
                 await _mqttClientService.Publish(
                     $"radios/{slice.Radio.Serial}/client/{guiClient.ClientID}/slice/{slice.Letter}/{prop}",
-                    GetPropValue(slice, e.PropertyName).ToString() ?? string.Empty);
+                    GetPropValueAsString(slice, e.PropertyName));
                 
                 if (slice.IsTransmitSlice && e.PropertyName is nameof(Slice.TXAnt) or nameof(Slice.Freq)
                     || e.PropertyName is nameof(Slice.IsTransmitSlice) && slice.IsTransmitSlice)
@@ -177,9 +178,10 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         return JsonSerializer.Serialize(payload, options);
     }
     
-    private static object GetPropValue(object src, string propName)
+    private static string GetPropValueAsString(object src, string propName)
     {
-        return src.GetType().GetProperty(propName)?.GetValue(src, null)??string.Empty;
+        var value = src.GetType().GetProperty(propName)?.GetValue(src);
+        return Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
     }
 
     private void AddRadioMeterListeners(Radio radio)
@@ -191,19 +193,6 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         radio.SWRDataReady += RadioOnSWRDataReady;
         radio.MainFanDataReady += RadioOnMainFanDataReady;
     }
-
-    private float _fanLastValue;
-    private async void RadioOnMainFanDataReady(float data)
-    {
-        if(ConnectedRadio == null) return;
-        if (Math.Abs(data - _fanLastValue) > .01f)
-        {
-            _fanLastValue = data;
-            await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/mainfan",
-                data.ToString(CultureInfo.InvariantCulture));
-        }
-    }
-
     
     private void RemoveRadioMeterListeners(Radio radio)
     {
@@ -215,6 +204,17 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         radio.MainFanDataReady -= RadioOnMainFanDataReady;
     }
 
+    private float _fanLastValue;
+    private async void RadioOnMainFanDataReady(float data)
+    {
+        if(ConnectedRadio == null) return;
+        if (Math.Abs(data - _fanLastValue) > .01f)
+        {
+            _fanLastValue = data;
+            await PublishMeterData("main_fan", data);
+        }
+    }
+    
     private float _swrLastValue;
     private async void RadioOnSWRDataReady(float data)
     {
@@ -222,8 +222,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         if (Math.Abs(data - _swrLastValue) > .01f)
         {
             _swrLastValue = data;
-            await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/swr",
-                data.ToString(CultureInfo.InvariantCulture));
+            await PublishMeterData("swr", data);
         }
     }
 
@@ -237,8 +236,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
             //Meter name = REFPWR
             //Convert dbm to watts
             var w = ConvertDbmToWatts(data);
-            await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/ref_pwr",
-                w.ToString(CultureInfo.InvariantCulture));
+            await PublishMeterData("ref_pwr", w);
         }
     }
 
@@ -252,8 +250,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
             //Meter name = FWDPWR
             //Convert dbm to watts
             var w = ConvertDbmToWatts(data);
-            await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/fwd_pwr", 
-                w.ToString(CultureInfo.InvariantCulture));
+            await PublishMeterData("fwd_pwr", w);
         }
     }
 
@@ -264,8 +261,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         if (Math.Abs(data - _paTempLastValue) > .01f)
         {
             _paTempLastValue = data;
-            await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/pa_temp",
-                data.ToString(CultureInfo.InvariantCulture));
+            await PublishMeterData("pa_temp", data);
         }
     }
 
@@ -276,9 +272,15 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         if (Math.Abs(data - _voltsLastValue) > .01f)
         {
             _voltsLastValue = data;
-            await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/voltage",
-                data.ToString(CultureInfo.InvariantCulture));
+            await PublishMeterData("voltage", data);
         }
+    }
+
+    private async Task PublishMeterData(string meterName, double data)
+    {
+        if (ConnectedRadio == null) return;
+        await _mqttClientService.Publish($"radios/{ConnectedRadio.Radio.Serial}/meters/{meterName}",
+            data.ToString(CultureInfo.InvariantCulture));
     }
 
     private static double ConvertDbmToWatts(float dbm)
