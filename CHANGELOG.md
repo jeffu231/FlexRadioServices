@@ -1,4 +1,11 @@
 BuildTestConsole Changelog
+<a name="2.2.0"></a>
+## [2.2.0](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v2.2.0) (2026-03-11)
+
+### Features
+
+* **Configuration:** Add a configuration option to control Full Duplex Mute feature ([ac878eb](https://www.github.com/jeffu231/FlexRadioServices/commit/ac878ebbcb2755faedfb4c635c4dca19be8f4913))
+
 <a name="2.1.0"></a>
 ## [2.1.0](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v2.1.0) (2026-03-11)
 
