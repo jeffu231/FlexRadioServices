@@ -53,7 +53,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
             //Interlock states will occur before the Mox change event fires.
             if (e.PropertyName == nameof(Radio.InterlockState))
             {
-                _logger.LogInformation("Interlock changed {InterlockState}", r.InterlockState);
+                _logger.LogDebug("Interlock changed {InterlockState}", r.InterlockState);
                 await HandleMoxChange(r);
             }
         }
@@ -75,8 +75,6 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         }
         
         _logger.LogDebug("Interlock MOX changed to false");
-        await ClearRadioTxBandInfo(r);
-        
     }
 
     private void RadioOnSliceRemoved(Slice slc)
@@ -134,11 +132,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         await _mqttClientService.Publish($"radios/{radio.Serial}/mox", 
             RadioManagerService.IsInterlockMox(radio.InterlockState).ToString());
     }
-
-    private async Task ClearRadioTxBandInfo(Radio radio)
-    {
-        await _mqttClientService.Publish($"radios/{radio.Serial}/tx_info",string.Empty);
-    }
+    
     private async Task PublishRadioTxBandInfo(Slice slice)
     {
         _logger.LogDebug("Publishing TX BAND info for radio {RadioSerial}", slice.Letter);
