@@ -21,6 +21,11 @@ public class SliceProxy
     public uint ClientHandle => _flexSlice.ClientHandle;
 
     public string Owner => _flexSlice.Owner;
+    
+    /// <summary>
+    /// A list of available modes for this slice
+    /// </summary>
+    public List<string> ModeList => _flexSlice.ModeList;
 
     /// <summary>
     /// Gets or sets whether the Slice is the transmit slice on the GUI client.
