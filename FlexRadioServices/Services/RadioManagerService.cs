@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using Flex.Smoothlake.FlexLib;
+using FlexRadioServices.Models.Settings;
+using Microsoft.Extensions.Options;
 
 namespace FlexRadioServices.Services;
 
@@ -7,12 +9,15 @@ public class RadioManagerService: ConnectedRadioServiceBase
 {
 
     private readonly ILogger<RadioManagerService> _logger;
+    private readonly IOptions<RadioSettings> _radioSettings;
     private Slice? _lastTxSlice;
     private bool _lastTxSliceMuteState;
     
-    public RadioManagerService(IFlexRadioService flexRadioService, ILogger<RadioManagerService> logger) : base(flexRadioService, logger)
+    public RadioManagerService(IFlexRadioService flexRadioService, ILogger<RadioManagerService> logger, 
+        IOptions<RadioSettings> radioSettings) : base(flexRadioService, logger)
     {
         _logger = logger;
+        _radioSettings = radioSettings;
     }
     
     protected override void ConnectedRadioChanged(object? sender, ConnectedRadioEventArgs args)
@@ -169,7 +174,7 @@ public class RadioManagerService: ConnectedRadioServiceBase
     /// <param name="r">Radio</param>
     private void HandleMoxChange(Radio r)
     {
-        if (r.FullDuplexEnabled)
+        if (r.FullDuplexEnabled && _radioSettings.Value.FullDuplexMuteLogicEnabled)
         {
             _logger.LogDebug("Full Duplex is on - Applying mute logic");
             if (IsInterlockMox(r.InterlockState))
