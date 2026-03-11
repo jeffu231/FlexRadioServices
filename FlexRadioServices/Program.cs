@@ -1,4 +1,6 @@
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
 using Flex.Smoothlake.FlexLib;
@@ -87,7 +89,13 @@ namespace FlexRadioServices
             {
                 o.RespectBrowserAcceptHeader = true;
                 o.ReturnHttpNotAcceptable = true;
-            }).AddNewtonsoftJson();
+            }).AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+                options.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
+                options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            });
 
             services.Configure<RouteOptions>(options => options.LowercaseUrls = true);
 
