@@ -201,7 +201,7 @@ public class RadioManagerService: ConnectedRadioServiceBase
         }
     }
     
-    private bool IsInterlockMox(InterlockState state)
+    public static bool IsInterlockMox(InterlockState state)
     {
         bool flag = false;
         switch (state)

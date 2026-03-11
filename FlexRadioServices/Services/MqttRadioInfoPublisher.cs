@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Globalization;
+using System.Text.Json;
 using Flex.Smoothlake.FlexLib;
 using FlexRadioServices.Utils;
 
@@ -43,9 +44,38 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
     }
 
 
-    protected override void RadioOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    protected override async void RadioOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        
+        if (sender is Radio r)
+        {
+            //Interlock states will occur before the Mox change event fires.
+            if (e.PropertyName == nameof(Radio.InterlockState))
+            {
+                _logger.LogInformation("Interlock changed {InterlockState}", r.InterlockState);
+                await HandleMoxChange(r);
+            }
+        }
+    }
+    
+    private async Task HandleMoxChange(Radio r)
+    {
+        await PublishMoxState(r);
+        if (RadioManagerService.IsInterlockMox(r.InterlockState))
+        {
+            _logger.LogDebug("Interlock MOX changed to true");
+            var txSlice = r.SliceList.ToArray()
+                .FirstOrDefault(s => s.IsTransmitSlice && s.ClientHandle == r.TXClientHandle);
+            if (txSlice is not null)
+            {
+                await PublishRadioTxBandInfo(txSlice);
+            }
+        }
+        else
+        {
+            _logger.LogDebug("Interlock MOX changed to false");
+            await PublishMoxState(r);
+            await ClearRadioTxBandInfo(r);
+        }
     }
 
     private void RadioOnSliceRemoved(Slice slc)
@@ -58,7 +88,9 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
     {
         _logger.LogDebug("Added slice {Letter} listener for radio {RadioSerial}",slc.Letter, slc.Radio.Serial);
         slc.PropertyChanged += SliceOnPropertyChanged;
+        PublishInitialSliceInfo(slc);
     }
+
     private async void SliceOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (sender is Slice slice && e.PropertyName != null)
@@ -71,13 +103,11 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
                 await _mqttClientService.Publish(
                     $"radios/{slice.Radio.Serial}/client/{guiClient.ClientID}/slice/{slice.Letter}/{prop}",
                     GetPropValue(slice, e.PropertyName).ToString() ?? string.Empty);
-
-                if (slice.IsTransmitSlice)
+                
+                if (slice.IsTransmitSlice && e.PropertyName is nameof(Slice.TXAnt) or nameof(Slice.Freq)
+                    || e.PropertyName is nameof(Slice.IsTransmitSlice) && slice.IsTransmitSlice)
                 {
-                    if (slice.IsTransmitSlice)
-                    {
-                        await PublishTxBandInfo(slice);
-                    }
+                    await PublishClientTxBandInfo(slice);
                 }
             }
             catch (Exception ex)
@@ -89,19 +119,48 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
             
         }
     }
-    private async Task PublishTxBandInfo(Slice slice)
+    
+    private void PublishInitialSliceInfo(Slice slc)
     {
-        _logger.LogDebug("Publishing TX BAND info to radio {RadioSerial}", slice.Letter);
-        var guiClient = slice.Radio.FindGUIClientByClientHandle(slice.ClientHandle);
-        await _mqttClientService.Publish($"radios/{slice.Radio.Serial}/client/{guiClient.ClientID}"+
-                                         $"/txslice/{slice.Letter}/txant/{slice.TXAnt}/freq",
-            slice.Freq.ToString(CultureInfo.InvariantCulture));
-        
-        await _mqttClientService.Publish($"radios/{slice.Radio.Serial}/client/{guiClient.ClientID}"+
-                                         $"/txslice/{slice.Letter}/txant/{slice.TXAnt}/band",
-            BandConverter.ConvertToBand(slice.Freq * 1000).ToString(CultureInfo.InvariantCulture));
+        if (slc.IsTransmitSlice)
+        {
+            _ = PublishClientTxBandInfo(slc);
+        }
     }
 
+    private async Task PublishMoxState(Radio radio)
+    {
+        await _mqttClientService.Publish($"radios/{radio.Serial}/mox", 
+            RadioManagerService.IsInterlockMox(radio.InterlockState).ToString());
+    }
+
+    private async Task ClearRadioTxBandInfo(Radio radio)
+    {
+        await _mqttClientService.Publish($"radios/{radio.Serial}/tx_info",string.Empty);
+    }
+    private async Task PublishRadioTxBandInfo(Slice slice)
+    {
+        _logger.LogDebug("Publishing TX BAND info for radio {RadioSerial}", slice.Letter);
+        
+        await _mqttClientService.Publish($"radios/{slice.Radio.Serial}/tx_info",
+            GetTxSliceInfoJson(slice));
+    }
+    
+    private async Task PublishClientTxBandInfo(Slice slice)
+    {
+        var guiClient = slice.Radio.FindGUIClientByClientHandle(slice.ClientHandle);
+        _logger.LogDebug("Publishing TX BAND info for radio {RadioSerial} / Client {GuiClient}",
+            slice.Letter, guiClient.ClientID);
+        
+        await _mqttClientService.Publish($"radios/{slice.Radio.Serial}/client/{guiClient.ClientID}/tx_info",
+            GetTxSliceInfoJson(slice));
+    }
+
+    private static string GetTxSliceInfoJson(Slice slice)
+    {
+        return JsonSerializer.Serialize(new { slice = slice.Letter, txAnt = slice.TXAnt, freq = slice.Freq, 
+            band = BandConverter.ConvertToBand(slice.Freq * 1000) });
+    }
     
     private static object GetPropValue(object src, string propName)
     {
