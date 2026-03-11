@@ -169,7 +169,7 @@ public class RadioController: ControllerBase
         var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
         if (radioProxy != null)
         {
-            if (!radioProxy.Connected)
+            if (radioProxy.Connected)
             {
                 var client = radioProxy.GuiClients.FirstOrDefault(c => c.ClientId == clientId);
                 if (client == null)
