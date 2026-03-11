@@ -1,4 +1,19 @@
 BuildTestConsole Changelog
+<a name="2.3.0"></a>
+## [2.3.0](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v2.3.0) (2026-03-11)
+
+### Features
+
+* **API:** Add Mode List to slice model ([3e584ba](https://www.github.com/jeffu231/FlexRadioServices/commit/3e584baafbdbbf874ded8553a2dfd33ad9da0649))
+* **Json:** Replace last references to Newtonsoft / Bump to NET 10 ([3824c8c](https://www.github.com/jeffu231/FlexRadioServices/commit/3824c8c1c5e328d32adb381111620dfcac6e4e0d))
+
+### Bug Fixes
+
+* Remove publishing empty tx info and fix log message level ([b0c05ee](https://www.github.com/jeffu231/FlexRadioServices/commit/b0c05ee40029d481112c1c3c20884ca7e802c974))
+* **API:** Fix incorrect logic in slices API giving radio not connected error ([9a3e72b](https://www.github.com/jeffu231/FlexRadioServices/commit/9a3e72bae9ee12cdcbea1cb4fc22730fad7b5b90))
+* **CI:** Update publish to NET 10 ([9e0bb75](https://www.github.com/jeffu231/FlexRadioServices/commit/9e0bb759ff355d6e26399c60833ebfd5a4bbab40))
+* **JsonSerializer:** Convert to using System.Text.Json ([f4c5ab8](https://www.github.com/jeffu231/FlexRadioServices/commit/f4c5ab88a144b3843bc7e970c657ec9e30d50879))
+
 <a name="2.2.0"></a>
 ## [2.2.0](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v2.2.0) (2026-03-11)
 
