@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Flex.Smoothlake.FlexLib;
 using FlexRadioServices.Utils;
 
@@ -69,13 +70,12 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
             {
                 await PublishRadioTxBandInfo(txSlice);
             }
+            return;
         }
-        else
-        {
-            _logger.LogDebug("Interlock MOX changed to false");
-            await PublishMoxState(r);
-            await ClearRadioTxBandInfo(r);
-        }
+        
+        _logger.LogDebug("Interlock MOX changed to false");
+        await ClearRadioTxBandInfo(r);
+        
     }
 
     private void RadioOnSliceRemoved(Slice slc)
@@ -143,7 +143,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
         _logger.LogDebug("Publishing TX BAND info for radio {RadioSerial}", slice.Letter);
         
         await _mqttClientService.Publish($"radios/{slice.Radio.Serial}/tx_info",
-            GetTxSliceInfoJson(slice));
+            GetTxSliceInfoJson(slice, true));
     }
     
     private async Task PublishClientTxBandInfo(Slice slice)
@@ -156,10 +156,25 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
             GetTxSliceInfoJson(slice));
     }
 
-    private static string GetTxSliceInfoJson(Slice slice)
+    private static string GetTxSliceInfoJson(Slice slice, bool includeClientId = false)
     {
-        return JsonSerializer.Serialize(new { slice = slice.Letter, txAnt = slice.TXAnt, freq = slice.Freq, 
-            band = BandConverter.ConvertToBand(slice.Freq * 1000) });
+        var guiClient = includeClientId
+            ? slice.Radio.FindGUIClientByClientHandle(slice.ClientHandle)
+            : null;
+        
+        var payload = new
+        {
+            slice = slice.Letter,
+            txAnt = slice.TXAnt,
+            freq = slice.Freq,
+            band = BandConverter.ConvertToBand(slice.Freq * 1000),
+            clientID = includeClientId ? guiClient?.ClientID : null
+        };
+        var options = new JsonSerializerOptions
+        {
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
+        return JsonSerializer.Serialize(payload, options);
     }
     
     private static object GetPropValue(object src, string propName)
