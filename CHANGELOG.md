@@ -1,4 +1,21 @@
 BuildTestConsole Changelog
+<a name="2.1.0"></a>
+## [2.1.0](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v2.1.0) (2026-03-11)
+
+### Features
+
+* **MQTT:** Publish tx info as a json object at the slice and radio level ([269508e](https://www.github.com/jeffu231/FlexRadioServices/commit/269508e51672618bccc74081a6b076967641a076))
+
+### Bug Fixes
+
+* Include client id on radio tx info ([2589aa1](https://www.github.com/jeffu231/FlexRadioServices/commit/2589aa1d12d72f442eb80c6afaf9bbee1ce61823))
+* **Hygiene:** Code clean up to simplify logic ([b01a536](https://www.github.com/jeffu231/FlexRadioServices/commit/b01a5364b87271362e19f9492547ae9196d4ce6a))
+
+### Documentation
+
+* **README:** Update the readme to refer to the Wiki ([b7af70d](https://www.github.com/jeffu231/FlexRadioServices/commit/b7af70db9d061a1839e73cc9ec4643f79990c423))
+* **README:** Update topic information docs ([1d6cc9e](https://www.github.com/jeffu231/FlexRadioServices/commit/1d6cc9ef0eaf51b691aa534c26ae61fd5cf0615f))
+
 <a name="2.0.0"></a>
 ## [2.0.0](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v2.0.0) (2026-03-09)
 
