@@ -12,7 +12,23 @@ Simple CAT functions to support WSJT and simple loggers to get / set frequency m
 
 Provides for a MQTT broker connection to publish some of the core state changes that occur in the radio.
 
-Ex. hamradio/flexradio/radios/2621-1104-6600-0756/slice/B/freq 222.174
+### Topics
+
+#### Radio Level
+
+* {root topic}/radios/{Radio Serial}/meters   - Radio metering information  
+Ex. hamradio/flexradio/radios/0000-0000-6600-0123/meters/pa_temp 26.1875
+* {root topic}/radios/{Radio Serial}/mox   - Radio transmit state  
+Ex. hamradio/flexradio/radios/0000-0000-6600-0123/mox
+* {root topic}/radios/{Radio Serial}/tx_info  - Radio transmit slice information when transmitting
+Ex. hamradio/flexradio/radios/0000-0000-6600-0123/tx_info {"slice":"B","freq":28.458,"txAnt":"ANT1"}
+
+
+#### Slice Level
+* {root topic}/radios/{Radio Serial}/{Client Id}/slice/{Letter}/{Slice Property}  
+Ex. hamradio/flexradio/radios/0000-0000-6600-0123/slice/B/freq 222.174
+*  {root topic}/radios/{Radio Serial}/{Client Id}/slice/{Letter}/tx_info  - Per client transmit slice information  
+Ex. hamradio/flexradio/radios/0000-0000-6600-0123/tx_info {"slice":"B","freq":28.458,"txAnt":"ANT1"}
 
 ## API
 
