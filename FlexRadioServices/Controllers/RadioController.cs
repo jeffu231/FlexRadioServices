@@ -5,6 +5,7 @@ using FlexRadioServices.Models;
 using FlexRadioServices.Services;
 using FlexRadioServices.Utils;
 using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.AspNetCore.JsonPatch.SystemTextJson;
 using Microsoft.AspNetCore.Mvc;
 using Spot = FlexRadioServices.Models.Spot;
 
