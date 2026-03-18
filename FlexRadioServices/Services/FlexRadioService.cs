@@ -88,6 +88,7 @@ namespace FlexRadioServices.Services
                 if (radioProxy != null)
                 {
                     DiscoveredRadios.Remove(radioProxy);
+                    radioProxy.PropertyChanged -= RadioOnPropertyChanged;
                     if (radioProxy == ConnectedRadio)
                     {
                         ConnectedRadio = null;
