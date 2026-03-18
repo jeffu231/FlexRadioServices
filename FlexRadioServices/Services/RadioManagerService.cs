@@ -24,16 +24,18 @@ public class RadioManagerService: ConnectedRadioServiceBase
     {
         if (args.PreviousRadio != null)
         {
+            var previousRadio = args.PreviousRadio.Radio;
             foreach (var slice in args.PreviousRadio.Radio.SliceList)
             {
                 RadioOnSliceRemoved(slice);
             }
 
-            args.PreviousRadio.Radio.SliceAdded -= RadioOnSliceAdded;
-            args.PreviousRadio.Radio.SliceRemoved -= RadioOnSliceRemoved;
-            args.PreviousRadio.Radio.PanadapterRemoved += RadioOnPanadapterRemoved;
+            previousRadio.SliceAdded -= RadioOnSliceAdded;
+            previousRadio.SliceRemoved -= RadioOnSliceRemoved;
+            previousRadio.PanadapterAdded -= RadioOnPanadapterAdded;
+            previousRadio.PanadapterRemoved -= RadioOnPanadapterRemoved;
             
-            foreach (var panadapter in args.PreviousRadio.Radio.PanadapterList.ToList())
+            foreach (var panadapter in previousRadio.PanadapterList.ToList())
             {
                 panadapter.PropertyChanged -= PanadapterOnPropertyChanged;
             }
@@ -49,6 +51,7 @@ public class RadioManagerService: ConnectedRadioServiceBase
             ConnectedRadio.Radio.SliceAdded += RadioOnSliceAdded;
             ConnectedRadio.Radio.SliceRemoved += RadioOnSliceRemoved;
             ConnectedRadio.Radio.PanadapterAdded += RadioOnPanadapterAdded;
+            ConnectedRadio.Radio.PanadapterRemoved += RadioOnPanadapterRemoved;
             
             foreach (var panadapter in ConnectedRadio.Radio.PanadapterList.ToList())
             {
