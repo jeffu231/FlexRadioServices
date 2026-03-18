@@ -130,7 +130,7 @@ public sealed class MqttRadioInfoPublisher:ConnectedRadioServiceBase, IMqttRadio
     private async Task PublishMoxState(Radio radio)
     {
         await _mqttClientService.Publish($"radios/{radio.Serial}/mox", 
-            RadioManagerService.IsInterlockMox(radio.InterlockState).ToString());
+            RadioManagerService.IsInterlockMox(radio.InterlockState).ToString().ToLower(CultureInfo.InvariantCulture));
     }
     
     private async Task PublishRadioTxBandInfo(Slice slice)
