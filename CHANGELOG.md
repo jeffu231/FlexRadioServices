@@ -1,4 +1,11 @@
 BuildTestConsole Changelog
+<a name="2.3.1"></a>
+## [2.3.1](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v2.3.1) (2026-03-18)
+
+### Bug Fixes
+
+* **MQTT:** Fix bug where mox bool values where published in upper case ([e71a4c8](https://www.github.com/jeffu231/FlexRadioServices/commit/e71a4c8d474dbaed5ca9fb090473053767a15fcb))
+
 <a name="2.3.0"></a>
 ## [2.3.0](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v2.3.0) (2026-03-11)
 
