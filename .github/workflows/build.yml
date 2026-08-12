@@ -81,7 +81,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish and push the container Image
         run: |
-          dotnet publish -c Release /p:PublishProfile=github
+          dotnet publish FlexRadioServices/FlexRadioServices.csproj -c Release /p:PublishProfile=github
 
       - name: create release info
         if: steps.versionize.outcome == 'success'
