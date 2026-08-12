@@ -1,4 +1,36 @@
 BuildTestConsole Changelog
+<a name="2.4.0"></a>
+## [2.4.0](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v2.4.0) (2026-08-12)
+
+### Features
+
+* **Config:** Validate runtime configuration ([2d7502c](https://www.github.com/jeffu231/FlexRadioServices/commit/2d7502cf020ce0d6ceef91700c7cea998d9d0951))
+* **FlexLib:** Manage host lifecycle ([d917e80](https://www.github.com/jeffu231/FlexRadioServices/commit/d917e806c6a088fc39b484969448451e2c0b3ce9))
+* **MQTT:** Supervise broker lifecycle ([5661a09](https://www.github.com/jeffu231/FlexRadioServices/commit/5661a09016521ce42e65c4aa02ea7d895840ed9d))
+* **MQTT:** Supervise radio event publishing ([d0b645a](https://www.github.com/jeffu231/FlexRadioServices/commit/d0b645acd7979a8f53864a4e92f54b56b66d80bb))
+
+### Bug Fixes
+
+* Enusre property changed event is clean up on radio remove ([07cd518](https://www.github.com/jeffu231/FlexRadioServices/commit/07cd51897834ded9050dd7fcd1e4abfa21eac6c4))
+* Fix leaking event handlers in the radio manager service ([d25c1f4](https://www.github.com/jeffu231/FlexRadioServices/commit/d25c1f4c25f9fca463aa6d3e5b07c6f7cb1633d0))
+* **API:** Redact MQTT credentials ([e114b96](https://www.github.com/jeffu231/FlexRadioServices/commit/e114b961c5386d6bfee7f44dffedab4d33e3f9e5))
+* **API:** Version spot response contracts ([8b5fad0](https://www.github.com/jeffu231/FlexRadioServices/commit/8b5fad03026dfda5d5484532d0ba21c6bd31c906))
+* **CAT:** Correct secondary slice selection ([f45f642](https://www.github.com/jeffu231/FlexRadioServices/commit/f45f64295045e1ae56013c793fb10de55fa506f3))
+* **CAT:** Isolate client command framing ([cf7aa01](https://www.github.com/jeffu231/FlexRadioServices/commit/cf7aa012b79aad7fa12697153b8a47b96772f04b))
+* **docker:** Allow a specific trusted-LAN interface without changing the Compose file ([011df3d](https://www.github.com/jeffu231/FlexRadioServices/commit/011df3dbd5c1cc6884041bf5085bb44b416e4bfd))
+* **openapi:** enforce advisory checks ([116082c](https://www.github.com/jeffu231/FlexRadioServices/commit/116082c544e2e8ec66a45d323f8271d4c36f3d96))
+* **Radio:** Guard disappearing radio events ([550d84c](https://www.github.com/jeffu231/FlexRadioServices/commit/550d84c2e3b8d43f076c2224a9fa662c4eae8c4e))
+* **Radio:** Validate slice patch before commit ([ed55dee](https://www.github.com/jeffu231/FlexRadioServices/commit/ed55dee6e7b0686c5d095f2e47d13fd6119d31a1))
+* **tcp:** make CAT shutdown deterministic ([f16aede](https://www.github.com/jeffu231/FlexRadioServices/commit/f16aedeaa63d20ecb84dc6666b9a2d54308f2608))
+
+### Continuous Integration
+
+* **git:** Add user appsettings to git ignore ([47ff8b4](https://www.github.com/jeffu231/FlexRadioServices/commit/47ff8b46ae55ab702680a368eed62e4e91083c48))
+
+### Documentation
+
+* Add agent skills ([1b96d65](https://www.github.com/jeffu231/FlexRadioServices/commit/1b96d655fc77a17ce8e797ee618f1b602c8a32ab))
+
 <a name="2.3.1"></a>
 ## [2.3.1](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v2.3.1) (2026-03-18)
 
