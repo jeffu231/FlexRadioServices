@@ -12,8 +12,8 @@ services:
     container_name: flex-radio-api
     restart: unless-stopped
     ports:
-      - "4991-4992:4991-4992/udp" # Ports for radio communication
-      - "6005-6020:6005-6020/tcp" # Range of CAT ports defined in appsettings
+      - "${FLEX_RADIO_HOST_IP:-0.0.0.0}:4991-4992:4991-4992/udp" # Ports for radio communication
+      - "${FLEX_RADIO_HOST_IP:-0.0.0.0}:6005-6020:6005-6020/tcp" # Range of CAT ports defined in appsettings
     networks:
       - traefik-net
     volumes:
