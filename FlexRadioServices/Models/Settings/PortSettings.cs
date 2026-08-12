@@ -1,21 +1,48 @@
 namespace FlexRadioServices.Models.Settings;
 
-public record PortSettings
+/// <summary>
+/// Represents one CAT TCP listener and its slice-selection behavior.
+/// </summary>
+public sealed record PortSettings
 {
-    public string PortFriendlyName { get; set; } = "Not Named";
+    /// <summary>
+    /// Gets or sets the operator-facing name of the CAT listener.
+    /// </summary>
+    public string PortFriendlyName { get; init; } = "Not Named";
     
-    public string Protocol { get; set; } = "TCP";
+    /// <summary>
+    /// Gets or sets the listener protocol. Only TCP is supported.
+    /// </summary>
+    public string Protocol { get; init; } = "TCP";
 
-    public ushort PortNumber { get; set; }
+    /// <summary>
+    /// Gets or sets the TCP port on which the listener accepts connections.
+    /// </summary>
+    public ushort PortNumber { get; init; }
 
-    public PortSliceType PortSliceType { get; set; }
+    /// <summary>
+    /// Gets or sets the slice-selection behavior for the listener.
+    /// </summary>
+    public PortSliceType PortSliceType { get; init; }
 
-    public string ClientId { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the radio client identifier associated with this listener.
+    /// </summary>
+    public string ClientId { get; init; } = string.Empty;
 
-    public string VfoASliceLetter { get; set; } = "A";
+    /// <summary>
+    /// Gets or sets the slice letter assigned to VFO A.
+    /// </summary>
+    public string VfoASliceLetter { get; init; } = "A";
     
-    public string VfoBSliceLetter { get; set; } = "A";
+    /// <summary>
+    /// Gets or sets the optional slice letter assigned to VFO B.
+    /// </summary>
+    public string VfoBSliceLetter { get; init; } = "A";
     
-    public bool AutoSwitchTxSlice { get; set; }
+    /// <summary>
+    /// Gets or sets a value that indicates whether transmit-slice changes are followed automatically.
+    /// </summary>
+    public bool AutoSwitchTxSlice { get; init; }
     
 }

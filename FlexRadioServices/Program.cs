@@ -50,11 +50,10 @@ namespace FlexRadioServices
         private static void ConfigureServices(WebApplicationBuilder builder)
         {
             
-            builder.Configuration.AddJsonFile("./appsettings/appsettings.user.json", optional:true, reloadOnChange: true);
+            builder.Configuration.AddJsonFile("./appsettings/appsettings.user.json", optional: true, reloadOnChange: false);
             var services = builder.Services;
-            builder.Services.Configure<RadioSettings>(builder.Configuration.GetSection("RadioSettings"));
-            builder.Services.Configure<MqttBrokerSettings>(builder.Configuration.GetSection("MqttBrokerSettings"));
-            builder.Services.Configure<CatPortSettings>(builder.Configuration.GetSection("CatPorts"));
+            services.AddRuntimeConfiguration(builder.Configuration);
+            services.AddHostedService<RuntimeConfigurationDiagnosticsService>();
             
             services.AddSingleton<IFlexRadioService, FlexRadioService>();
             services.AddSingleton<ISliceCommandService, SliceCommandService>();
@@ -62,10 +61,10 @@ namespace FlexRadioServices
             services.AddTransient<ITcpServer, TcpServer>();
             
             var mqttBrokerSettings = builder.Configuration
-                .GetSection("MqttBrokerSettings")
+                .GetSection(MqttBrokerSettings.SectionName)
                 .Get<MqttBrokerSettings>();
             
-            if (mqttBrokerSettings != null && !string.IsNullOrEmpty(mqttBrokerSettings.BrokerHost))
+            if (mqttBrokerSettings != null && !string.IsNullOrWhiteSpace(mqttBrokerSettings.BrokerHost))
             {
                 services.AddMqttClientHostedService(mqttBrokerSettings);
                 services.AddHostedService<MqttRadioInfoPublisher>();
@@ -73,7 +72,7 @@ namespace FlexRadioServices
             services.AddHostedService<RadioManagerService>();
 
             var portSettings = builder.Configuration
-                .GetSection("CatPorts")
+                .GetSection(CatPortSettings.SectionName)
                 .Get<CatPortSettings>()?
                 .PortSettings;
             if (portSettings != null)

@@ -25,7 +25,16 @@ split paths like a transverter. See the Wiki for details.
 
 ## Configuration
 
-The service is configured via appsettings.user.json. See the Wiki for details.
+The service is configured via `appsettings/appsettings.user.json`; use
+`FlexRadioServices/Example/appsettings.user.json` as the starting point. The
+settings are read once at startup. Restart the service after every
+configuration change—CAT listener and MQTT broker topology are not reloaded
+while the service is running.
+
+CAT listeners use TCP. Each listener needs a unique port, friendly name, and
+client ID. Designated listeners require a VFO A slice letter from A through H.
+MQTT is disabled when `BrokerHost` is empty; when enabled, it requires a valid
+port, client ID, root topic, and either both MQTT credentials or neither.
 
 ## Docker
 

@@ -1,6 +1,17 @@
 namespace FlexRadioServices.Models.Settings;
 
-public record CatPortSettings
+/// <summary>
+/// Represents the CAT TCP listener settings read during service startup.
+/// </summary>
+public sealed record CatPortSettings
 {
-    public List<PortSettings> PortSettings { get; set; } = new List<PortSettings>();
+    /// <summary>
+    /// Gets the configuration section name for CAT port settings.
+    /// </summary>
+    public const string SectionName = "CatPorts";
+
+    /// <summary>
+    /// Gets or sets the configured CAT TCP listeners.
+    /// </summary>
+    public List<PortSettings> PortSettings { get; init; } = [];
 }
