@@ -12,6 +12,10 @@
         <Authors>Jeff Uchitjil</Authors>
     </PropertyGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="FlexRadioServices.Tests" />
+    </ItemGroup>
+
     <PropertyGroup Condition="'$(Configuration)' == 'Release'">
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <NoWarn>$(NoWarn);1591</NoWarn>

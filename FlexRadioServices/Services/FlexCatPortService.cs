@@ -1,19 +1,24 @@
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Net;
-using System.Text;
+using System.Threading.Channels;
 using Flex.Smoothlake.FlexLib;
-using FlexRadioServices.Events;
 using FlexRadioServices.Models;
 using FlexRadioServices.Models.Ports;
 using FlexRadioServices.Models.Ports.Network;
 using FlexRadioServices.Models.Settings;
+using FlexRadioServices.Services.Cat;
 using FlexRadioServices.Utils.Slice;
 
 namespace FlexRadioServices.Services;
 
-public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
+public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, ICatCommandSink
 {
+    /// <summary>
+    /// Defines the maximum number of complete CAT commands awaiting execution.
+    /// Readers pause client input when this capacity is reached.
+    /// </summary>
+    internal const int CatCommandQueueCapacity = 256;
     private readonly PortSettings _portSettings;
     private readonly ITcpServer _tcpServer;
     private readonly ILogger<FlexCatPortService> _logger;
@@ -22,13 +27,13 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
     private Slice? _slice;
     private Slice? _slice2;
     private bool _split;  //placeholder
-    private readonly ConcurrentQueue<CatCommand> _commandQueue;
+    private readonly Channel<CatCommand> _commandQueue;
+    private readonly ConcurrentDictionary<ITcpServerClient, CatSession> _sessions = [];
     private bool _autoInfo;
     private bool _shortFreq;
     private double _splitFreq;
     private bool _splitXit;
 
-    private readonly StringBuilder _commandDataBuffer = new();
     private bool _autoRemoveSplitSlice = false;
 
     public FlexCatPortService(PortSettings portSettings, ITcpServer tcpServer,
@@ -37,7 +42,12 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
         _logger = logger;
         _portSettings = portSettings;
         _tcpServer = tcpServer;
-        _commandQueue = new ConcurrentQueue<CatCommand>();
+        _commandQueue = Channel.CreateBounded<CatCommand>(new BoundedChannelOptions(CatCommandQueueCapacity)
+        {
+            FullMode = BoundedChannelFullMode.Wait,
+            SingleReader = true,
+            SingleWriter = false
+        });
     }
 
     public override Task StartAsync(CancellationToken cancellationToken)
@@ -62,31 +72,25 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
 
     protected override async Task DoWorkAsync(CancellationToken cancellationToken)
     {
-        if (_commandQueue.TryDequeue(out var command))
+        var command = await _commandQueue.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+        var response = ProcessCommand(command.Command);
+        if (command.Command.StartsWith("IF", StringComparison.Ordinal))
         {
-            var response = ProcessCommand(command.Command);
-            if (command.Command.StartsWith("IF"))
-            {
-                _logger.LogDebug("{Name} - Sending {Response} for command {Command} to requesting client",
-                    _portSettings.PortFriendlyName,response, command.Command);
-            }
-
-            try
-            {
-                if (command.Client.Connected)
-                {
-                    await command.Client.SendAsync(response);
-                }
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e,"{Name} - Error sending response to client", _portSettings.PortFriendlyName);
-            }
-            
-            return;
+            _logger.LogDebug("{Name} - Sending {Response} for command {Command} to requesting client",
+                _portSettings.PortFriendlyName, response, command.Command);
         }
-        
-        await Task.Delay(100, cancellationToken);
+
+        try
+        {
+            if (command.Session.Connected)
+            {
+                await command.Session.SendAsync(response, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e,"{Name} - Error sending response to client", _portSettings.PortFriendlyName);
+        }
     }
 
     private void TcpServerOnClientDisconnected(object? sender, ClientDisconnectedEventArgs e)
@@ -94,53 +98,27 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
         _logger.LogDebug("{Name} - Removing data received listener {Port}", 
             _portSettings.PortFriendlyName, _portSettings.PortNumber);
         e.Client.DataReceived -= ClientOnDataReceived;
+        _sessions.TryRemove(e.Client, out _);
     }
 
     private void TcpServerOnClientConnected(object? sender, ClientConnectedEventArgs e)
     {
         _logger.LogDebug("{Name} Adding data received listener {Port}", 
             _portSettings.PortFriendlyName, _portSettings.PortNumber);
+        var session = new CatSession(e.Client, this, _logger);
+        _sessions.TryAdd(e.Client, session);
         e.Client.DataReceived += ClientOnDataReceived;
     }
 
-    private void ClientOnDataReceived(object? sender, DataReceivedEventArgs e)
+    private ValueTask ClientOnDataReceived(ITcpServerClient client, ReadOnlyMemory<byte> data, CancellationToken cancellationToken)
     {
-        _logger.LogTrace("{Name} - Data received from client {Data}", _portSettings.PortFriendlyName, e.Data);
-        if (sender is ITcpServerClient client)
-        {
-            var data = e.Data.Replace("\r", "").Replace("\n", "");
-            _commandDataBuffer.Append(data);
-            foreach (string command in ExtractCommandsFromBuffer(_commandDataBuffer))
-            {
-                _logger.LogTrace("Adding command {Command} to queue", command);
-                _commandQueue.Enqueue(new CatCommand(command, client));
-            }
-        }
+        return _sessions.TryGetValue(client, out var session)
+            ? session.ProcessAsync(data, cancellationToken)
+            : ValueTask.CompletedTask;
     }
-    
-    private List<string> ExtractCommandsFromBuffer(StringBuilder buffer)
-    {
-        List<string> stringList = new List<string>();
-        string s = buffer.ToString();
-        do
-        {
-            var length = s.IndexOf(";", StringComparison.Ordinal);
-            if (length >= 0)
-            {
-                if (length > 0)
-                {
-                    string command = s.Substring(0, length);
-                    stringList.Add(command);
-                }
-                s = s.Remove(0, length + 1);
-                buffer.Remove(0, length + 1);
-            }
-            else
-                break;
-        }
-        while (true);
-        return stringList;
-    }
+
+    ValueTask ICatCommandSink.EnqueueAsync(CatCommand command, CancellationToken cancellationToken) =>
+        _commandQueue.Writer.WriteAsync(command, cancellationToken);
 
 
     public override async Task StopAsync(CancellationToken cancellationToken)
@@ -328,7 +306,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService
         _logger.LogTrace("Sending command {Command} to {Num} client(s)", command, _tcpServer.Clients.Count);
         foreach (var client in _tcpServer.Clients)
         {
-            await client.SendAsync(command);
+            await client.SendAsync(command, CancellationToken.None);
         }
     }
 

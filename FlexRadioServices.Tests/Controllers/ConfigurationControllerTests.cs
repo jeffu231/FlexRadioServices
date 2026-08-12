@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
 
-namespace FlexRadioServices.Tests;
+namespace FlexRadioServices.Tests.Controllers;
 
 public sealed class ConfigurationControllerTests
 {

@@ -1,16 +1,8 @@
-using FlexRadioServices.Models.Ports.Network;
+using FlexRadioServices.Services.Cat;
 
 namespace FlexRadioServices.Services;
 
-public class CatCommand
-{
-    public CatCommand(string command, ITcpServerClient client)
-    {
-        Command = command;
-        Client = client;
-    }
-    
-    public string Command { get; init; }
-
-    public ITcpServerClient Client { get; init; }
-}
+/// <summary>
+/// Represents a complete CAT command and the session that submitted it.
+/// </summary>
+internal sealed record CatCommand(string Command, CatSession Session);

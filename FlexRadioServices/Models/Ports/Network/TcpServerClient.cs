@@ -19,6 +19,7 @@ namespace FlexRadioServices.Models.Ports.Network
         public TcpClient? Client { get; set; }
 
         public bool Connected => Client?.Connected ?? false;
+        public string RemoteEndPoint => _clientIpAddress;
         
         public async Task StartAsync()
         {
@@ -45,8 +46,7 @@ namespace FlexRadioServices.Models.Ports.Network
             {
                 while ((i = await stream.ReadAsync(bytes, 0, bytes.Length)) != 0 && Client.Connected)
                 {
-                    string data = Encoding.ASCII.GetString(bytes, 0, i);
-                    OnDataReceived(data);
+                    await OnDataReceivedAsync(bytes.AsMemory(0, i), CancellationToken.None).ConfigureAwait(false);
                 }
             }
             catch (Exception e)
@@ -66,27 +66,35 @@ namespace FlexRadioServices.Models.Ports.Network
             _logger.LogInformation("Client {ClientIpAddress} on port {Port} Stopped", _clientIpAddress, _port);
         }
         
-        public async Task SendAsync(string data)
+        public async ValueTask SendAsync(string data, CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(data)) return;
             if (Client != null && Client.Connected)
             {
                 Byte[] reply = Encoding.ASCII.GetBytes(data);
-                await Client.GetStream().WriteAsync(reply);
+                await Client.GetStream().WriteAsync(reply, cancellationToken).ConfigureAwait(false);
             }
         }
 
         public event EventHandler<EventArgs>? ConnectionClosed;
-        public event EventHandler<DataReceivedEventArgs>? DataReceived;
+        public event Func<ITcpServerClient, ReadOnlyMemory<byte>, CancellationToken, ValueTask>? DataReceived;
 
         private void OnConnectionClosed()
         {
             ConnectionClosed?.Invoke(this, EventArgs.Empty);
         }
 
-        private void OnDataReceived(string data)
+        private async ValueTask OnDataReceivedAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken)
         {
-            DataReceived?.Invoke(this, new DataReceivedEventArgs {Data = data});
+            if (DataReceived is null)
+            {
+                return;
+            }
+
+            foreach (Func<ITcpServerClient, ReadOnlyMemory<byte>, CancellationToken, ValueTask> handler in DataReceived.GetInvocationList())
+            {
+                await handler(this, data, cancellationToken).ConfigureAwait(false);
+            }
         }
 
         public override string ToString()
