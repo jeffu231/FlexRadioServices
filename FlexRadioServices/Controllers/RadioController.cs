@@ -2,6 +2,7 @@ using System.Net;
 using Asp.Versioning;
 using FlexRadioServices.Attributes;
 using FlexRadioServices.Models;
+using FlexRadioServices.Models.Api;
 using FlexRadioServices.Models.Radio;
 using FlexRadioServices.Services;
 using Microsoft.AspNetCore.JsonPatch.SystemTextJson;
@@ -13,7 +14,8 @@ namespace FlexRadioServices.Controllers;
 [ApiController]
 [Route("api/frs/v{version:apiVersion}/[controller]")]
 [ApiVersion("1.0")]
-public class RadioController(ILogger<RadioController> logger, IFlexRadioService flexRadioService,
+[ApiVersion("2.0")]
+public sealed class RadioController(ILogger<RadioController> logger, IFlexRadioService flexRadioService,
     ISliceCommandService sliceCommandService) : ControllerBase
 {
     private readonly ILogger<RadioController> _logger = logger;
@@ -27,10 +29,7 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
     [MapToApiVersion("1.0")]
     [ProducesResponseType(typeof(IEnumerable<RadioSnapshot>), (int)HttpStatusCode.OK)]
     [Produces("application/json")]
-    public async Task<IActionResult> Radios()
-    {
-        return await Task.FromResult(Ok(_flexRadioService.GetDiscoveredRadios()));
-    }
+    public ActionResult<IEnumerable<RadioSnapshot>> Radios() => Ok(_flexRadioService.GetDiscoveredRadios());
     
     /// <summary>
     /// Connects a radio.
@@ -39,20 +38,20 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
     /// <returns>Result</returns>
     [HttpPost("radios/{id}/connect")]
     [MapToApiVersion("1.0")]
-    [ProducesResponseType(typeof(void), (int)HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(OperationResultResponse), (int)HttpStatusCode.OK)]
     [ProducesResponseType((int)HttpStatusCode.NotFound, Type = typeof(ProblemDetails))]
     [Produces("application/json")]
-    public IActionResult Connect(string id)
+    public ActionResult<OperationResultResponse> Connect(string id)
     {
         var radio = _flexRadioService.GetDiscoveredRadios().FirstOrDefault(r => r.Serial.Equals(id.Trim(), StringComparison.Ordinal));
         if (radio != null)
         {
             if (radio.Connected)
             {
-                return Ok("Already Connected");
+                return Ok(new OperationResultResponse("Already connected"));
             }
             _flexRadioService.ConnectToRadio(radio.Serial);
-            return Ok("Connected");
+            return Ok(new OperationResultResponse("Connected"));
         }
         
         _logger.LogError("Radio {Id} not found", id);
@@ -66,20 +65,20 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
     /// <returns>Result</returns>
     [HttpPost("radios/{id}/disconnect")]
     [MapToApiVersion("1.0")]
-    [ProducesResponseType(typeof(void), (int)HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(OperationResultResponse), (int)HttpStatusCode.OK)]
     [ProducesResponseType((int)HttpStatusCode.NotFound, Type = typeof(ProblemDetails))]
     [Produces("application/json")]
-    public IActionResult Disconnect(string id)
+    public ActionResult<OperationResultResponse> Disconnect(string id)
     {
         var radio = _flexRadioService.GetDiscoveredRadios().FirstOrDefault(r => r.Serial.Equals(id.Trim(), StringComparison.Ordinal));
         if (radio != null)
         {
             if (!radio.Connected)
             {
-                return Ok("Already disconnected");
+                return Ok(new OperationResultResponse("Already disconnected"));
             }
             _flexRadioService.DisconnectRadio(radio.Serial);
-            return Ok("Disconnected");
+            return Ok(new OperationResultResponse("Disconnected"));
         }
         
         _logger.LogError("Radio {Id} not found", id);
@@ -95,7 +94,7 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
     [MapToApiVersion("1.0")]
     [ProducesResponseType(typeof(IEnumerable<RadioClientSnapshot>), (int)HttpStatusCode.OK)]
     [ProducesResponseType((int)HttpStatusCode.NotFound, Type = typeof(ProblemDetails))]
-    [ProducesResponseType((int)HttpStatusCode.ServiceUnavailable, Type = typeof(ProblemDetails))]
+    [ProducesResponseType((int)HttpStatusCode.Conflict, Type = typeof(ProblemDetails))]
     [Produces("application/json")]
     public IActionResult Clients(string id)
     {
@@ -108,8 +107,8 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
                 return Ok(_flexRadioService.GetRadioClients(radio.Serial));
             }
             
-            _logger.LogError("Radio {Id} not found", id);
-            return Problem($"Radio {id} not connected", statusCode: 503);
+            _logger.LogWarning("Radio {Id} is not connected", id);
+            return DisconnectedRadioProblem(id);
         }
 
         _logger.LogError("Radio {Id} not found", id);
@@ -125,7 +124,7 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
     [MapToApiVersion("1.0")]
     [ProducesResponseType(typeof(IEnumerable<SliceProxy>), (int)HttpStatusCode.OK)]
     [ProducesResponseType((int)HttpStatusCode.NotFound, Type = typeof(ProblemDetails))]
-    [ProducesResponseType((int)HttpStatusCode.ServiceUnavailable, Type = typeof(ProblemDetails))]
+    [ProducesResponseType((int)HttpStatusCode.Conflict, Type = typeof(ProblemDetails))]
     [Produces("application/json")]
     public IActionResult Slices(string id)
     {
@@ -138,8 +137,8 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
                 return Ok(slices);
             }
             
-            _logger.LogError("Radio {Id} not connected", id);
-            return Problem($"Radio {id} not connected", statusCode: 503);
+            _logger.LogWarning("Radio {Id} is not connected", id);
+            return DisconnectedRadioProblem(id);
         }
 
         _logger.LogError("Radio {Id} not found", id);
@@ -156,7 +155,7 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
     [MapToApiVersion("1.0")]
     [ProducesResponseType(typeof(IEnumerable<SliceProxy>), (int)HttpStatusCode.OK)]
     [ProducesResponseType((int)HttpStatusCode.NotFound, Type = typeof(ProblemDetails))]
-    [ProducesResponseType((int)HttpStatusCode.ServiceUnavailable, Type = typeof(ProblemDetails))]
+    [ProducesResponseType((int)HttpStatusCode.Conflict, Type = typeof(ProblemDetails))]
     [Produces("application/json")]
     public IActionResult Slices(string id, string clientId)
     {
@@ -168,7 +167,7 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
                 var client = radioProxy.GuiClients.FirstOrDefault(c => c.ClientId == clientId);
                 if (client == null)
                 {
-                    return Problem($"Client id {clientId} not found");
+                    return Problem($"Client id {clientId} not found.", statusCode: 404);
                 }
 
                 var slices = radioProxy.Radio.SliceList.Where(s => s.ClientHandle == client.ClientHandle)
@@ -176,8 +175,8 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
                 return Ok(slices);
             }
             
-            _logger.LogError("Radio {Id} not connected", id);
-            return Problem("Radio not connected", statusCode: 503);
+            _logger.LogWarning("Radio {Id} is not connected", id);
+            return DisconnectedRadioProblem(id);
         }
 
         _logger.LogError("Radio {Id} not found", id);
@@ -195,7 +194,7 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
     [MapToApiVersion("1.0")]
     [ProducesResponseType(typeof(SliceProxy), (int)HttpStatusCode.OK)]
     [ProducesResponseType((int)HttpStatusCode.NotFound, Type = typeof(ProblemDetails))]
-    [ProducesResponseType((int)HttpStatusCode.ServiceUnavailable, Type = typeof(ProblemDetails))]
+    [ProducesResponseType((int)HttpStatusCode.Conflict, Type = typeof(ProblemDetails))]
     [Produces("application/json")]
     public IActionResult Slice(string id, string clientId, [SliceLetter] string letter)
     {
@@ -207,7 +206,7 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
                 var client = radioProxy.GuiClients.FirstOrDefault(c => c.ClientId == clientId);
                 if (client == null)
                 {
-                    return Problem($"Client id {clientId} not found");
+                    return Problem($"Client id {clientId} not found.", statusCode: 404);
                 }
 
                 var slice = radioProxy.Radio.SliceList.Where(s => s.ClientHandle == client.ClientHandle &&
@@ -221,8 +220,8 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
                 return NotFound();
             }
             
-            _logger.LogError("Radio {Id} not connected", id);
-            return Problem($"Radio not connected", statusCode: 503);
+            _logger.LogWarning("Radio {Id} is not connected", id);
+            return DisconnectedRadioProblem(id);
         }
         
         _logger.LogError("Radio {Id} not found", id);
@@ -244,7 +243,7 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
     [ProducesResponseType(typeof(SlicePatchState), (int)HttpStatusCode.OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), (int)HttpStatusCode.BadRequest)]
     [ProducesResponseType((int)HttpStatusCode.NotFound, Type = typeof(ProblemDetails))]
-    [ProducesResponseType((int)HttpStatusCode.ServiceUnavailable, Type = typeof(ProblemDetails))] 
+    [ProducesResponseType((int)HttpStatusCode.Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType((int)HttpStatusCode.InternalServerError, Type = typeof(ProblemDetails))]
     [Produces("application/json")]
     public async Task<IActionResult> PatchSlice(string id, string clientId, [SliceLetter] string letter,
@@ -261,7 +260,7 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
                             clientId); //radioProxy.GuiClients.FirstOrDefault(c => c.ClientId == clientId);
                 if (client == null)
                 {
-                    return Problem($"Client id {clientId} not found");
+                    return Problem($"Client id {clientId} not found.", statusCode: 404);
                 }
 
                 var s = radioProxy.Radio.FindSliceByLetter(letter, client.ClientHandle);
@@ -307,9 +306,8 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
                 return Problem($"Slice {letter} not found.", statusCode: 404);
             }
 
-            _logger.LogError("Radio {Id} not connected", id);
-            _logger.LogError("Radio {Id} not connected", id);
-            return Problem($"Radio not connected", statusCode: 503);
+            _logger.LogWarning("Radio {Id} is not connected", id);
+            return DisconnectedRadioProblem(id);
         }
 
         _logger.LogError("Radio {Id} not found", id);
@@ -324,7 +322,9 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
     /// <param name="spots">A List of type <see cref="FlexRadioServices.Models.Spot">Spot</see> to be submitted.</param>
     /// <returns>A response indicating the result of the operation.</returns>
     [HttpPost("radios/{id}/spots")]
+    [MapToApiVersion("1.0")]
     [ProducesResponseType(typeof(void), (int)HttpStatusCode.OK)]
+    [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType((int)HttpStatusCode.NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType((int)HttpStatusCode.ServiceUnavailable, Type = typeof(ProblemDetails))]
     public IActionResult Spot(string id, [FromBody] List<Spot> spots)
@@ -368,6 +368,7 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
     }
     
     [HttpDelete("radios/{id}/spots")]
+    [MapToApiVersion("1.0")]
     [ProducesResponseType(typeof(void), (int)HttpStatusCode.OK)]
     [ProducesResponseType((int)HttpStatusCode.NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType((int)HttpStatusCode.ServiceUnavailable, Type = typeof(ProblemDetails))]   
@@ -392,7 +393,9 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
     }
     
     [HttpDelete("radios/{id}/spots/{callsign}/{frequency}")]
+    [MapToApiVersion("1.0")]
     [ProducesResponseType(typeof(void), (int)HttpStatusCode.OK)]
+    [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType((int)HttpStatusCode.NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType((int)HttpStatusCode.ServiceUnavailable, Type = typeof(ProblemDetails))]  
     public IActionResult Spot(string id, string callsign, double frequency)
@@ -417,6 +420,145 @@ public class RadioController(ILogger<RadioController> logger, IFlexRadioService 
         _logger.LogError("Radio {Id} not found", id);
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
+
+    /// <summary>
+    /// Submits a validated list of spots to a connected radio.
+    /// </summary>
+    /// <param name="id">The unique identifier of the radio.</param>
+    /// <param name="spots">The spots to submit.</param>
+    /// <returns>The result of the submission.</returns>
+    [HttpPost("radios/{id}/spots")]
+    [MapToApiVersion("2.0")]
+    [ProducesResponseType(typeof(OperationResultResponse), (int)HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), (int)HttpStatusCode.BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), (int)HttpStatusCode.NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), (int)HttpStatusCode.Conflict)]
+    [Produces("application/json")]
+    public ActionResult<OperationResultResponse> SubmitSpots(string id, [FromBody] List<SpotRequest>? spots)
+    {
+        SpotRequestValidator.ValidateBatch(spots, ModelState);
+        if (!ModelState.IsValid)
+        {
+            return ValidationProblem(ModelState);
+        }
+
+        var radioProxy = GetRadioHandle(id);
+        if (radioProxy is null)
+        {
+            _logger.LogWarning("Radio {Id} was not found", id);
+            return Problem($"Radio {id} not found.", statusCode: (int)HttpStatusCode.NotFound);
+        }
+
+        if (!radioProxy.Connected)
+        {
+            _logger.LogWarning("Radio {Id} is not connected", id);
+            return DisconnectedRadioProblem(id);
+        }
+
+        foreach (var spot in spots!)
+        {
+            radioProxy.Radio.RequestSpot(CreateFlexSpot(spot));
+        }
+
+        return Ok(new OperationResultResponse("Spots submitted"));
+    }
+
+    /// <summary>
+    /// Removes all spots from a connected radio.
+    /// </summary>
+    /// <param name="id">The unique identifier of the radio.</param>
+    /// <returns>The result of the operation.</returns>
+    [HttpDelete("radios/{id}/spots")]
+    [MapToApiVersion("2.0")]
+    [ProducesResponseType(typeof(OperationResultResponse), (int)HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(ProblemDetails), (int)HttpStatusCode.NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), (int)HttpStatusCode.Conflict)]
+    [Produces("application/json")]
+    public ActionResult<OperationResultResponse> ClearSpots(string id)
+    {
+        var radioProxy = GetRadioHandle(id);
+        if (radioProxy is null)
+        {
+            return Problem($"Radio {id} not found.", statusCode: (int)HttpStatusCode.NotFound);
+        }
+
+        if (!radioProxy.Connected)
+        {
+            return DisconnectedRadioProblem(id);
+        }
+
+        radioProxy.Radio.ClearAllSpots();
+        return Ok(new OperationResultResponse("Spots cleared"));
+    }
+
+    /// <summary>
+    /// Removes a spot from a connected radio.
+    /// </summary>
+    /// <param name="id">The unique identifier of the radio.</param>
+    /// <param name="callsign">The callsign displayed by the spot.</param>
+    /// <param name="frequency">The receive frequency in MHz.</param>
+    /// <returns>The result of the operation.</returns>
+    [HttpDelete("radios/{id}/spots/{callsign}/{frequency}")]
+    [MapToApiVersion("2.0")]
+    [ProducesResponseType(typeof(OperationResultResponse), (int)HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), (int)HttpStatusCode.BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), (int)HttpStatusCode.NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), (int)HttpStatusCode.Conflict)]
+    [Produces("application/json")]
+    public ActionResult<OperationResultResponse> RemoveSpot(string id, [FromRoute] string callsign, double frequency)
+    {
+        if (string.IsNullOrWhiteSpace(callsign))
+        {
+            ModelState.TryAddModelError(nameof(callsign), "Callsign is required.");
+        }
+
+        if (!double.IsFinite(frequency) || frequency is <= 0 or > 10000)
+        {
+            ModelState.TryAddModelError(nameof(frequency), "Frequency must be a finite value between 0.001 and 10000 MHz.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return ValidationProblem(ModelState);
+        }
+
+        var radioProxy = GetRadioHandle(id);
+        if (radioProxy is null)
+        {
+            return Problem($"Radio {id} not found.", statusCode: (int)HttpStatusCode.NotFound);
+        }
+
+        if (!radioProxy.Connected)
+        {
+            return DisconnectedRadioProblem(id);
+        }
+
+        radioProxy.Radio.RemoveSpot(callsign, frequency);
+        return Ok(new OperationResultResponse("Spot removed"));
+    }
+
+    private ObjectResult DisconnectedRadioProblem(string id) => Problem(
+        detail: $"Radio {id} is not connected.",
+        statusCode: (int)HttpStatusCode.Conflict,
+        title: "Radio is disconnected",
+        type: "https://flexradioservices.dev/problems/radio-disconnected");
+
+    private static Flex.Smoothlake.FlexLib.Spot CreateFlexSpot(SpotRequest spot) => new()
+    {
+        Callsign = spot.Callsign,
+        RXFrequency = spot.RxFrequency,
+        TXFrequency = spot.TxFrequency,
+        Mode = spot.Mode,
+        Color = spot.Color,
+        BackgroundColor = spot.BackgroundColor,
+        Source = spot.Source,
+        SpotterCallsign = spot.SpotterCallsign,
+        LifetimeSeconds = spot.LifetimeSeconds,
+        Timestamp = spot.Timestamp,
+        Comment = spot.Comment,
+        Priority = spot.Priority,
+        TriggerAction = spot.TriggerAction
+    };
 
     private RadioProxy? GetRadioHandle(string id) =>
         (_flexRadioService as FlexRadioService)?.GetRadioHandle(id.Trim());

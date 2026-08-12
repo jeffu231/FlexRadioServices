@@ -1,6 +1,7 @@
 using System.Net;
 using System.Reflection;
 using Asp.Versioning;
+using FlexRadioServices.Models.Api;
 using FlexRadioServices.Models.Configuration;
 using FlexRadioServices.Models.Settings;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +12,7 @@ namespace FlexRadioServices.Controllers;
 [ApiController]
 [Route("api/frs/v{version:apiVersion}/[controller]")]
 [ApiVersion("1.0")]
-public class ConfigurationController:ControllerBase
+public sealed class ConfigurationController:ControllerBase
 {
     private readonly ILogger<ConfigurationController> _logger;
     private readonly IOptions<CatPortSettings> _catPortSettings;
@@ -33,12 +34,12 @@ public class ConfigurationController:ControllerBase
     /// <returns>Application Version</returns>
     [HttpGet("version")]
     [MapToApiVersion("1.0")]
-    [ProducesResponseType(typeof(string), (int)HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(ApplicationVersionResponse), (int)HttpStatusCode.OK)]
     [Produces("application/json")]
-    public IActionResult GetVersion()
+    public ActionResult<ApplicationVersionResponse> GetVersion()
     {
         var version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString();
-        return Ok(new { ApplicationVersion = version });
+        return Ok(new ApplicationVersionResponse(version));
     }
 
     /// <summary>

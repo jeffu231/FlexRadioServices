@@ -36,6 +36,32 @@ public sealed class OpenApiDocumentTests(OpenApiWebApplicationFactory factory)
         Assert.Contains("/api/frs/v1/configuration/version", document.Paths.Keys);
         Assert.Contains("/api/frs/v1/radio/radios", document.Paths.Keys);
     }
+
+    [Fact]
+    public async Task V2JsonDocument_DocumentsValidatedSpotContracts()
+    {
+        var client = factory.CreateClient();
+
+        var response = await client.GetAsync("api/frs/swagger/v2/swagger.json");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var document = OpenApiDocument.Parse(
+            await response.Content.ReadAsStringAsync(),
+            "json",
+            new OpenApiReaderSettings()).Document
+            ?? throw new InvalidOperationException("OpenAPI reader did not return a document.");
+        Assert.True(document.Paths.TryGetValue("/api/frs/v2/radio/radios/{id}/spots", out var path));
+        var pathItem = path ?? throw new InvalidOperationException("Spot path was not documented.");
+        var operations = pathItem.Operations ?? throw new InvalidOperationException("Spot operations were not documented.");
+        Assert.True(operations.TryGetValue(HttpMethod.Post, out var operation));
+        var postOperation = operation ?? throw new InvalidOperationException("Spot POST was not documented.");
+        var responses = postOperation.Responses ?? throw new InvalidOperationException("Spot responses were not documented.");
+
+        Assert.Contains("200", responses.Keys);
+        Assert.Contains("400", responses.Keys);
+        Assert.Contains("404", responses.Keys);
+        Assert.Contains("409", responses.Keys);
+    }
 }
 
 /// <summary>
