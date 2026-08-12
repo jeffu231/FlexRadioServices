@@ -120,19 +120,30 @@ public class RadioManagerService: ConnectedRadioServiceBase
 
     private void SliceOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (sender is Slice s)
+        if (sender is not Slice slice)
         {
-            var guiClient = s.Radio.FindGUIClientByClientHandle(s.ClientHandle);
-            if (guiClient != null)
+            return;
+        }
+
+        try
+        {
+            var client = slice.Radio.FindGUIClientByClientHandle(slice.ClientHandle);
+            if (client is null)
             {
-                _logger.LogDebug("{Station}/{Client} Slice {Letter} prop {Prop} changed",
-                    guiClient.Station, guiClient.Program, s.Letter, e.PropertyName);
+                _logger.LogDebug("Client {ClientHandle} is unavailable for slice {Letter} property {Property}",
+                    slice.ClientHandle, slice.Letter, e.PropertyName);
+                return;
             }
-            else
-            {
-                _logger.LogDebug("Client (Null) Slice {Letter} prop {Prop} changed", s.Letter, e.PropertyName);
-            }
-           
+
+            var station = client.Station;
+            var program = client.Program;
+            _logger.LogDebug("{Station}/{Client} Slice {Letter} prop {Prop} changed",
+                station, program, slice.Letter, e.PropertyName);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Skipping slice {Letter} property {Property} because its data is unavailable",
+                slice.Letter, e.PropertyName);
         }
     }
 
@@ -190,8 +201,19 @@ public class RadioManagerService: ConnectedRadioServiceBase
                     if (!txSlice.Mute)
                     {
                         var client = txSlice.Radio.FindGUIClientByClientHandle(txSlice.ClientHandle);
-                        _logger.LogInformation("TX Slice {Letter} on {Station}/{Client} muted", 
-                            txSlice.Letter, client.Station, client.Program);
+                        if (client is null)
+                        {
+                            _logger.LogInformation("TX Slice {Letter} for client handle {ClientHandle} muted",
+                                txSlice.Letter, txSlice.ClientHandle);
+                        }
+                        else
+                        {
+                            var station = client.Station;
+                            var program = client.Program;
+                            _logger.LogInformation("TX Slice {Letter} on {Station}/{Client} muted",
+                                txSlice.Letter, station, program);
+                        }
+
                         txSlice.Mute = true;
                     }
                 }

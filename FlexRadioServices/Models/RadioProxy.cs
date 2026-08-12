@@ -83,7 +83,10 @@ public sealed class RadioProxy
 
     public List<RadioClientProxy> GuiClients => _radio.GuiClients.Select(c => new RadioClientProxy(c)).ToList();
 
-    public string? TransmitSlice => _radio.TransmitSlice!=null?_radio.TransmitSlice.Letter:string.Empty;
+    /// <summary>
+    /// Gets the current transmit-slice letter, or <see langword="null"/> when no slice is transmitting.
+    /// </summary>
+    public string? TransmitSlice => _radio.TransmitSlice?.Letter;
 
     /// <summary>
     /// The ClientHandle of the client that is transmitting. This value

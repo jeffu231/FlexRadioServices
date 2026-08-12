@@ -161,22 +161,31 @@ public sealed class MqttRadioInfoPublisher : ConnectedRadioServiceBase, IMqttRad
 
     private void HandleMoxChange(Radio radio)
     {
-        _logger.LogDebug("Interlock changed {InterlockState}", radio.InterlockState);
-        EnqueueStateMessage($"radios/{radio.Serial}/mox",
-            RadioManagerService.IsInterlockMox(radio.InterlockState).ToString().ToLower(CultureInfo.InvariantCulture));
-
-        if (!RadioManagerService.IsInterlockMox(radio.InterlockState))
+        try
         {
-            _logger.LogDebug("Interlock MOX changed to false");
-            return;
+            var serial = radio.Serial;
+            var interlockState = radio.InterlockState;
+            var isMox = RadioManagerService.IsInterlockMox(interlockState);
+            _logger.LogDebug("Interlock changed {InterlockState}", interlockState);
+            EnqueueStateMessage($"radios/{serial}/mox", isMox.ToString().ToLower(CultureInfo.InvariantCulture));
+
+            if (!isMox)
+            {
+                _logger.LogDebug("Interlock MOX changed to false");
+                return;
+            }
+
+            _logger.LogDebug("Interlock MOX changed to true");
+            var transmitSlice = radio.SliceList.ToArray()
+                .FirstOrDefault(slice => slice.IsTransmitSlice && slice.ClientHandle == radio.TXClientHandle);
+            if (transmitSlice is not null)
+            {
+                EnqueueRadioTxBandInfo(transmitSlice);
+            }
         }
-
-        _logger.LogDebug("Interlock MOX changed to true");
-        var transmitSlice = radio.SliceList.ToArray()
-            .FirstOrDefault(slice => slice.IsTransmitSlice && slice.ClientHandle == radio.TXClientHandle);
-        if (transmitSlice is not null)
+        catch (Exception exception)
         {
-            EnqueueRadioTxBandInfo(transmitSlice);
+            _logger.LogWarning(exception, "Skipping MOX event because radio data is unavailable");
         }
     }
 
@@ -223,32 +232,58 @@ public sealed class MqttRadioInfoPublisher : ConnectedRadioServiceBase, IMqttRad
         }
         catch (Exception exception)
         {
-            _logger.LogDebug(exception, "Skipping slice property {Property} because its data is unavailable", e.PropertyName);
+            _logger.LogWarning(exception, "Skipping slice property {Property} because its data is unavailable", e.PropertyName);
         }
     }
 
     private void PublishInitialSliceInfo(Slice slice)
     {
-        if (!slice.IsTransmitSlice)
+        try
         {
-            return;
-        }
+            if (!slice.IsTransmitSlice)
+            {
+                return;
+            }
 
-        var guiClient = slice.Radio.FindGUIClientByClientHandle(slice.ClientHandle);
-        if (guiClient is null)
+            var guiClient = slice.Radio.FindGUIClientByClientHandle(slice.ClientHandle);
+            if (guiClient is null)
+            {
+                _logger.LogDebug("Skipping initial TX info for slice {Letter}; GUI client is unavailable", slice.Letter);
+                return;
+            }
+
+            EnqueueClientTxBandInfo(slice, guiClient.ClientID);
+        }
+        catch (Exception exception)
         {
-            _logger.LogDebug("Skipping initial TX info for slice {Letter}; GUI client is unavailable", slice.Letter);
-            return;
+            _logger.LogWarning(exception, "Skipping initial TX info because slice data is unavailable");
         }
-
-        EnqueueClientTxBandInfo(slice, guiClient.ClientID);
     }
 
     private void EnqueueRadioTxBandInfo(Slice slice)
     {
-        _logger.LogDebug("Publishing TX BAND info for radio {RadioSerial}", slice.Letter);
-        var guiClient = slice.Radio.FindGUIClientByClientHandle(slice.ClientHandle);
-        EnqueueStateMessage($"radios/{slice.Radio.Serial}/tx_info", GetTxSliceInfoJson(slice, guiClient?.ClientID));
+        try
+        {
+            var radio = slice.Radio;
+            var serial = radio.Serial;
+            var letter = slice.Letter;
+            var clientHandle = slice.ClientHandle;
+            var guiClient = radio.FindGUIClientByClientHandle(clientHandle);
+            if (guiClient is null)
+            {
+                _logger.LogDebug("Skipping radio TX info for serial {RadioSerial}, slice {Letter}, client handle {ClientHandle}; GUI client is unavailable",
+                    serial, letter, clientHandle);
+                return;
+            }
+
+            var clientId = guiClient.ClientID;
+            _logger.LogDebug("Publishing TX BAND info for radio {RadioSerial}", serial);
+            EnqueueStateMessage($"radios/{serial}/tx_info", GetTxSliceInfoJson(slice, clientId));
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Skipping radio TX info because slice data is unavailable");
+        }
     }
 
     private void EnqueueClientTxBandInfo(Slice slice, string clientId)

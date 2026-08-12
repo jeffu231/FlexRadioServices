@@ -177,5 +177,5 @@ public sealed class FlexRadioService : IFlexRadioService
 
     private static RadioClientSnapshot CreateSnapshot(GUIClient client) => new(
         client.ClientID, client.ClientHandle, client.Station, client.Program,
-        client.IsLocalPtt, client.TransmitSlice.Letter);
+        client.IsLocalPtt, client.TransmitSlice?.Letter);
 }

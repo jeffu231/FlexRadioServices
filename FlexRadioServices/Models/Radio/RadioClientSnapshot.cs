@@ -9,4 +9,4 @@ public sealed record RadioClientSnapshot(
     string Station,
     string ProgramName,
     bool IsLocalPtt,
-    string TransmitSliceLetter);
+    string? TransmitSliceLetter);
