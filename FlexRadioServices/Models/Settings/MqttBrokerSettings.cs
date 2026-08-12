@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace FlexRadioServices.Models.Settings;
 
 public class MqttBrokerSettings
@@ -10,6 +12,7 @@ public class MqttBrokerSettings
 
     public string ClientUser { get; set; } = String.Empty;
 
+    [JsonIgnore]
     public string ClientPassword { get; set; } = String.Empty;
     
     public string RootTopic { get; set; } = String.Empty;

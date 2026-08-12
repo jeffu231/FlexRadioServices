@@ -1,6 +1,7 @@
 using System.Net;
 using System.Reflection;
 using Asp.Versioning;
+using FlexRadioServices.Models.Configuration;
 using FlexRadioServices.Models.Settings;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -59,11 +60,20 @@ public class ConfigurationController:ControllerBase
     /// <returns>An <see cref="IActionResult"/> containing the MQTT settings.</returns>
     [HttpGet("mqtt/settings")]
     [MapToApiVersion("1.0")]
-    [ProducesResponseType(typeof(MqttBrokerSettings), (int)HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(MqttSettingsResponse), (int)HttpStatusCode.OK)]
     [Produces("application/json")]
     public async Task<IActionResult> GetMqttBrokerSettings()
     {
-        return await Task.FromResult(Ok(_mqttBrokerSettings.Value));
+        var settings = _mqttBrokerSettings.Value;
+        var response = new MqttSettingsResponse(
+            settings.BrokerHost,
+            settings.BrokerPort,
+            settings.ClientId,
+            settings.ClientUser,
+            settings.RootTopic,
+            !string.IsNullOrWhiteSpace(settings.ClientPassword));
+
+        return await Task.FromResult(Ok(response));
     }
 
     /// <summary>
