@@ -4,7 +4,6 @@ using FlexRadioServices.Attributes;
 using FlexRadioServices.Models;
 using FlexRadioServices.Models.Radio;
 using FlexRadioServices.Services;
-using FlexRadioServices.Utils;
 using Microsoft.AspNetCore.JsonPatch.SystemTextJson;
 using Microsoft.AspNetCore.Mvc;
 using Spot = FlexRadioServices.Models.Spot;
@@ -14,16 +13,11 @@ namespace FlexRadioServices.Controllers;
 [ApiController]
 [Route("api/frs/v{version:apiVersion}/[controller]")]
 [ApiVersion("1.0")]
-public class RadioController: ControllerBase
+public class RadioController(ILogger<RadioController> logger, IFlexRadioService flexRadioService,
+    ISliceCommandService sliceCommandService) : ControllerBase
 {
-    private readonly ILogger<RadioController> _logger;
-    private readonly IFlexRadioService _flexRadioService;
-    
-    public RadioController(ILogger<RadioController> logger, IFlexRadioService flexRadioService)
-    {
-        _logger = logger;
-        _flexRadioService = flexRadioService;
-    }
+    private readonly ILogger<RadioController> _logger = logger;
+    private readonly IFlexRadioService _flexRadioService = flexRadioService;
     
     /// <summary>
     /// Get a list of all discovered radios.
@@ -243,14 +237,18 @@ public class RadioController: ControllerBase
     /// <param name="clientId">The client id the slice you want to patch is located on.</param>
     /// <param name="letter">The Slice letter identifier within the client.</param>
     /// <param name="slicePatch">JSON Patch document</param>
+    /// <param name="cancellationToken">A token used to cancel the request.</param>
     /// <returns>Status</returns>
     [HttpPatch("radios/{id}/{clientId}/slices/{letter}")]
     [MapToApiVersion("1.0")]
+    [ProducesResponseType(typeof(SlicePatchState), (int)HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), (int)HttpStatusCode.BadRequest)]
     [ProducesResponseType((int)HttpStatusCode.NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType((int)HttpStatusCode.ServiceUnavailable, Type = typeof(ProblemDetails))] 
+    [ProducesResponseType((int)HttpStatusCode.InternalServerError, Type = typeof(ProblemDetails))]
     [Produces("application/json")]
-    public IActionResult PatchSlice(string id, string clientId, [SliceLetter] string letter, 
-        [FromBody] JsonPatchDocument<SliceProxy> slicePatch)
+    public async Task<IActionResult> PatchSlice(string id, string clientId, [SliceLetter] string letter,
+        [FromBody] JsonPatchDocument<SlicePatchState> slicePatch, CancellationToken cancellationToken)
     {
         var radioProxy = GetRadioHandle(id);
         if (radioProxy != null)
@@ -270,10 +268,39 @@ public class RadioController: ControllerBase
 
                 if (s != null)
                 {
-                    var slice = new SliceProxy(s);
-                    slicePatch.ApplyToSafely(slice, ModelState);
+                    SlicePatchValidator.ValidateOperations(slicePatch, ModelState);
                     if (!ModelState.IsValid) return ValidationProblem(ModelState);
-                    return Ok(slice);
+
+                    var original = SlicePatchState.FromSlice(s);
+                    var desired = new SlicePatchState
+                    {
+                        Freq = original.Freq, Mode = original.Mode, IsTransmitSlice = original.IsTransmitSlice,
+                        Active = original.Active, NROn = original.NROn, NBOn = original.NBOn, WNBOn = original.WNBOn,
+                        ANFOn = original.ANFOn, APFOn = original.APFOn, NrLevel = original.NrLevel, NbLevel = original.NbLevel,
+                        WnbLevel = original.WnbLevel, AnfLevel = original.AnfLevel, ApfLevel = original.ApfLevel, Mute = original.Mute,
+                        AudioGain = original.AudioGain, AudioPan = original.AudioPan, Lock = original.Lock
+                    };
+                    slicePatch.ApplyTo(desired, error => ModelState.TryAddModelError(error.Operation.path ?? string.Empty, error.ErrorMessage));
+                    if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+                    SlicePatchValidator.ValidateState(desired, s.ModeList, ModelState);
+                    if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+                    try
+                    {
+                        var committed = await sliceCommandService.ApplyAsync(
+                            new SliceIdentity(id.Trim(), client.ClientHandle, letter), new SliceChangeSet(original, desired), cancellationToken);
+                        return Ok(committed);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        return NotFound();
+                    }
+                    catch (SliceCommandException exception)
+                    {
+                        _logger.LogError(exception, "Failed to commit patch for slice {Letter}", letter);
+                        return Problem("The radio rejected a change and its state may have changed.", statusCode: 500);
+                    }
                 }
                 
                 _logger.LogError("Slice {Letter} not found", letter);

@@ -57,6 +57,7 @@ namespace FlexRadioServices
             builder.Services.Configure<CatPortSettings>(builder.Configuration.GetSection("CatPorts"));
             
             services.AddSingleton<IFlexRadioService, FlexRadioService>();
+            services.AddSingleton<ISliceCommandService, SliceCommandService>();
             services.AddTransient<ITcpServerClient, TcpServerClient>();
             services.AddTransient<ITcpServer, TcpServer>();
             
