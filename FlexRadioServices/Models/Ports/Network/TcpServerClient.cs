@@ -1,105 +1,146 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using FlexRadioServices.Events;
 
-namespace FlexRadioServices.Models.Ports.Network
+namespace FlexRadioServices.Models.Ports.Network;
+
+/// <summary>
+/// Implements the read and write lifetime for an accepted TCP client.
+/// </summary>
+public sealed class TcpServerClient(ILogger<TcpServerClient> logger) : ITcpServerClient
 {
-    public class TcpServerClient: ITcpServerClient
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
+    private string _remoteEndPoint = string.Empty;
+    private int _port;
+    private int _stopped;
+
+    /// <inheritdoc/>
+    public event Func<ITcpServerClient, ReadOnlyMemory<byte>, CancellationToken, ValueTask>? DataReceived;
+
+    /// <inheritdoc/>
+    public event EventHandler<EventArgs>? ConnectionClosed;
+
+    /// <inheritdoc/>
+    public TcpClient? Client { get; set; }
+
+    /// <inheritdoc/>
+    public bool Connected => Volatile.Read(ref _stopped) == 0 && Client?.Connected == true;
+
+    /// <inheritdoc/>
+    public string RemoteEndPoint => _remoteEndPoint;
+
+    /// <inheritdoc/>
+    public async Task RunAsync(CancellationToken cancellationToken)
     {
-        private string _clientIpAddress = string.Empty;
-        private int _port;
-        private readonly ILogger<TcpServerClient> _logger;
-        
-        public TcpServerClient(ILogger<TcpServerClient> logger)
-        {
-            _logger = logger;
-        }
+        var client = Client ?? throw new InvalidOperationException("A TCP client must be assigned before it can run.");
+        SetEndpoints(client);
+        logger.LogInformation("Starting client {ClientIpAddress} on port {Port}", _remoteEndPoint, _port);
 
-        public TcpClient? Client { get; set; }
-
-        public bool Connected => Client?.Connected ?? false;
-        public string RemoteEndPoint => _clientIpAddress;
-        
-        public async Task StartAsync()
+        try
         {
-            if (Client == null)
+            var stream = client.GetStream();
+            var buffer = new byte[256];
+            while (client.Connected)
             {
-                await Task.FromException(new ArgumentNullException(nameof(Client)));
-                return;
-            }
-            
-            if (Client.Client.RemoteEndPoint is IPEndPoint endPoint)
-            {
-                _clientIpAddress = $"{endPoint.Address}:{endPoint.Port}";
-            }
-            
-            if (Client.Client.LocalEndPoint is IPEndPoint p)
-            {
-                _port = p.Port;
-            }
-            _logger.LogInformation("Starting client {Ip} on port {Port}", _clientIpAddress, _port);
-            var stream = Client.GetStream();
-            Byte[] bytes = new Byte[256];
-            int i;
-            try
-            {
-                while ((i = await stream.ReadAsync(bytes, 0, bytes.Length)) != 0 && Client.Connected)
+                var bytesRead = await stream.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
+                if (bytesRead == 0)
                 {
-                    await OnDataReceivedAsync(bytes.AsMemory(0, i), CancellationToken.None).ConfigureAwait(false);
+                    break;
                 }
-            }
-            catch (Exception e)
-            {
-                _logger.LogError("Exception reading from client: {Exception}", e.ToString());
-            }
-            finally
-            {
-                Stop();
+
+                await OnDataReceivedAsync(buffer.AsMemory(0, bytesRead), cancellationToken).ConfigureAwait(false);
             }
         }
-
-        public void Stop()
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            Client?.Close();
-            OnConnectionClosed();
-            _logger.LogInformation("Client {ClientIpAddress} on port {Port} Stopped", _clientIpAddress, _port);
+            logger.LogDebug("Reading client {ClientIpAddress} was cancelled", _remoteEndPoint);
         }
-        
-        public async ValueTask SendAsync(string data, CancellationToken cancellationToken)
+        catch (IOException exception) when (Volatile.Read(ref _stopped) != 0)
         {
-            if (string.IsNullOrEmpty(data)) return;
-            if (Client != null && Client.Connected)
+            logger.LogDebug(exception, "Client {ClientIpAddress} closed while reading", _remoteEndPoint);
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Exception reading from client {ClientIpAddress}", _remoteEndPoint);
+        }
+        finally
+        {
+            Stop();
+        }
+    }
+
+    /// <inheritdoc/>
+    public async ValueTask SendAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken)
+    {
+        if (data.IsEmpty || !Connected || Client is not { } client)
+        {
+            return;
+        }
+
+        await _writeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (Connected)
             {
-                Byte[] reply = Encoding.ASCII.GetBytes(data);
-                await Client.GetStream().WriteAsync(reply, cancellationToken).ConfigureAwait(false);
+                await client.GetStream().WriteAsync(data, cancellationToken).ConfigureAwait(false);
             }
         }
-
-        public event EventHandler<EventArgs>? ConnectionClosed;
-        public event Func<ITcpServerClient, ReadOnlyMemory<byte>, CancellationToken, ValueTask>? DataReceived;
-
-        private void OnConnectionClosed()
+        finally
         {
-            ConnectionClosed?.Invoke(this, EventArgs.Empty);
+            _writeLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Sends an ASCII CAT response to the client.
+    /// </summary>
+    /// <param name="message">The response to send.</param>
+    /// <param name="cancellationToken">A token that cancels the send operation.</param>
+    /// <returns>A task that completes when the response is sent.</returns>
+    public ValueTask SendAsync(string message, CancellationToken cancellationToken) =>
+        string.IsNullOrEmpty(message)
+            ? ValueTask.CompletedTask
+            : SendAsync(Encoding.ASCII.GetBytes(message), cancellationToken);
+
+    /// <inheritdoc/>
+    public void Stop()
+    {
+        if (Interlocked.Exchange(ref _stopped, 1) != 0)
+        {
+            return;
         }
 
-        private async ValueTask OnDataReceivedAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken)
-        {
-            if (DataReceived is null)
-            {
-                return;
-            }
+        Client?.Close();
+        ConnectionClosed?.Invoke(this, EventArgs.Empty);
+        logger.LogInformation("Client {ClientIpAddress} on port {Port} stopped", _remoteEndPoint, _port);
+    }
 
-            foreach (Func<ITcpServerClient, ReadOnlyMemory<byte>, CancellationToken, ValueTask> handler in DataReceived.GetInvocationList())
-            {
-                await handler(this, data, cancellationToken).ConfigureAwait(false);
-            }
+    /// <inheritdoc/>
+    public override string ToString() => $"Client {_remoteEndPoint} on port {_port}";
+
+    private void SetEndpoints(TcpClient client)
+    {
+        if (client.Client.RemoteEndPoint is IPEndPoint remoteEndpoint)
+        {
+            _remoteEndPoint = remoteEndpoint.ToString();
         }
 
-        public override string ToString()
+        if (client.Client.LocalEndPoint is IPEndPoint localEndpoint)
         {
-            return $"Client {_clientIpAddress} on port {_port}";
+            _port = localEndpoint.Port;
+        }
+    }
+
+    private async ValueTask OnDataReceivedAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken)
+    {
+        if (DataReceived is null)
+        {
+            return;
+        }
+
+        foreach (var handler in DataReceived.GetInvocationList().Cast<Func<ITcpServerClient, ReadOnlyMemory<byte>, CancellationToken, ValueTask>>())
+        {
+            await handler(this, data, cancellationToken).ConfigureAwait(false);
         }
     }
 }

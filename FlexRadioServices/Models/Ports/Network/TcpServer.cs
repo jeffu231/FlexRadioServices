@@ -1,103 +1,175 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 
-namespace FlexRadioServices.Models.Ports.Network
+namespace FlexRadioServices.Models.Ports.Network;
+
+/// <summary>
+/// Accepts TCP connections and owns their cancellation-aware lifetimes.
+/// </summary>
+public sealed class TcpServer(ILogger<TcpServer> logger, IServiceProvider serviceProvider) : ITcpServer
 {
-    public class TcpServer:ITcpServer
+    private readonly object _lifecycleLock = new();
+    private readonly ConcurrentDictionary<ITcpServerClient, byte> _clients = [];
+    private readonly List<Task> _clientTasks = [];
+    private TcpListener? _listener;
+    private CancellationTokenSource? _clientCancellation;
+
+    /// <inheritdoc/>
+    public event EventHandler<ClientConnectedEventArgs>? ClientConnected;
+
+    /// <inheritdoc/>
+    public event EventHandler<ClientDisconnectedEventArgs>? ClientDisconnected;
+
+    /// <inheritdoc/>
+    public IReadOnlyCollection<ITcpServerClient> Clients => _clients.Keys.ToArray();
+
+    /// <inheritdoc/>
+    public IPEndPoint? LocalEndpoint { get; private set; }
+
+    /// <inheritdoc/>
+    public string PortFriendlyName { get; set; } = string.Empty;
+
+    /// <inheritdoc/>
+    public async Task RunAsync(IPAddress address, int port, CancellationToken stoppingToken)
     {
-        private TcpListener? _server;
-        private bool _running;
-        private readonly ILogger<TcpServer> _logger;
-        private readonly IServiceProvider _serviceProvider;
-        
-        public TcpServer(ILogger<TcpServer> logger, IServiceProvider serviceProvider)
+        ArgumentNullException.ThrowIfNull(address);
+
+        using var clientCancellation = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+        var listener = StartListener(address, port, clientCancellation);
+        try
         {
-            _logger = logger;
-            _serviceProvider = serviceProvider;
-            Clients = new List<ITcpServerClient>();
-        }
-        
-        public async Task StartListener(IPAddress ip, int port, CancellationToken cancellationToken)
-        {
-            await Task.Factory.StartNew(() =>
+            while (!clientCancellation.IsCancellationRequested)
             {
+                TcpClient acceptedClient;
                 try
                 {
-                    //IPAddress localAddr = IPAddress.Parse(ip);
-                    _logger.LogDebug("Starting on {IP} and port {Port}", ip, port);
-                    _server = new TcpListener(ip, port);
-                    _server.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
-                    _server.Start();
-                    _running = true;
-                    while (_running && !cancellationToken.IsCancellationRequested)
-                    {
-                        _logger.LogDebug("Waiting for a connection on port {Port}", port);
-                        TcpClient client = _server.AcceptTcpClient();
-                        _logger.LogDebug("Connected on port {Port}!", port);
-                        var networkClient = _serviceProvider.GetService<ITcpServerClient>();
-                        if (networkClient != null)
-                        {
-                            networkClient.Client = client;
-                            networkClient.ConnectionClosed += NetworkClientOnConnectionClosed;
-                            Clients.Add(networkClient);
-                            Task.Run(() => StartClient(networkClient), cancellationToken);
-                        }
-                    }
-                    
-                    StopListener();
+                    logger.LogDebug("Waiting for a connection on port {Port}", port);
+                    acceptedClient = await listener.AcceptTcpClientAsync(clientCancellation.Token).ConfigureAwait(false);
                 }
-                catch (SocketException e)
+                catch (OperationCanceledException) when (clientCancellation.IsCancellationRequested)
                 {
-                    _logger.LogCritical(e, "Socket Exception starting server for port {Port}", port );
+                    break;
                 }
-            }, cancellationToken);
+                catch (SocketException exception) when (clientCancellation.IsCancellationRequested)
+                {
+                    logger.LogDebug(exception, "Listener on port {Port} stopped while accepting", port);
+                    break;
+                }
 
-        }
-
-        public string PortFriendlyName { get; set; } = String.Empty;
-
-        private void NetworkClientOnConnectionClosed(object? sender, EventArgs e)
-        {
-            if (sender is TcpServerClient c)
-            {
-                _logger.LogInformation("Client {ClientInfo} is connected: {IsConnected}",c.ToString(), c.Connected);
-                c.ConnectionClosed -= NetworkClientOnConnectionClosed;
-                ClientDisconnected?.Invoke(this, new ClientDisconnectedEventArgs(c));
-                Clients.Remove(c);
+                var client = serviceProvider.GetRequiredService<ITcpServerClient>();
+                client.Client = acceptedClient;
+                client.ConnectionClosed += ClientOnConnectionClosed;
+                _clients.TryAdd(client, 0);
+                ClientConnected?.Invoke(this, new ClientConnectedEventArgs(client));
+                var clientTask = RunClientAsync(client, clientCancellation.Token);
+                lock (_lifecycleLock)
+                {
+                    _clientTasks.Add(clientTask);
+                }
+                logger.LogDebug("Client connected on port {Port}", port);
             }
         }
-
-        private void StopListener()
+        finally
         {
-            StopClients();
-            _server?.Stop();
-            _running = false;
-            _logger.LogDebug("Listener Stopped");
-        }
-
-        private void StopClients()
-        {
-            foreach (var client in Clients.ToList())
+            listener.Stop();
+            // ReSharper disable once MethodHasAsyncOverload
+            // That cancellation is part of RunAsync’s synchronous finally path; it only signals the token.
+            // The following await StopClientsAsync() already waits for every client read loop to observe cancellation and complete.
+            // CancelAsync() would add no correctness benefit and could complicate exception flow from cancellation callbacks.
+            clientCancellation.Cancel();
+            await StopClientsAsync().ConfigureAwait(false);
+            lock (_lifecycleLock)
             {
-                client.ConnectionClosed -= NetworkClientOnConnectionClosed;
-                Clients.Remove(client);
-                client.Stop();
+                if (ReferenceEquals(_listener, listener))
+                {
+                    _listener = null;
+                    _clientCancellation = null;
+                    LocalEndpoint = null;
+                    _clientTasks.Clear();
+                }
             }
-        }
 
-        private void StartClient(Object? obj)
+            logger.LogDebug("Listener on port {Port} stopped", port);
+        }
+    }
+
+    /// <inheritdoc/>
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        lock (_lifecycleLock)
         {
-            if (obj is TcpServerClient nc)
-            {
-                ClientConnected?.Invoke(this, new ClientConnectedEventArgs(nc));
-#pragma warning disable CS4014
-                nc.StartAsync();
-#pragma warning restore CS4014
-            }
+            _listener?.Stop();
+            _clientCancellation?.Cancel();
         }
 
-        public event EventHandler<ClientConnectedEventArgs>? ClientConnected;
-        public event EventHandler<ClientDisconnectedEventArgs>? ClientDisconnected;
-        public List<ITcpServerClient> Clients { get; }
+        return StopClientsAsync().WaitAsync(cancellationToken);
+    }
+
+    private TcpListener StartListener(IPAddress address, int port, CancellationTokenSource clientCancellation)
+    {
+        lock (_lifecycleLock)
+        {
+            if (_listener is not null)
+            {
+                throw new InvalidOperationException("The TCP listener is already running.");
+            }
+
+            logger.LogDebug("Starting listener {PortName} on {Address} and port {Port}", PortFriendlyName, address, port);
+            var listener = new TcpListener(address, port);
+            listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            listener.Start();
+            _listener = listener;
+            _clientCancellation = clientCancellation;
+            LocalEndpoint = (IPEndPoint)listener.LocalEndpoint;
+            return listener;
+        }
+    }
+
+    private async Task RunClientAsync(ITcpServerClient client, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await client.RunAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            RemoveClient(client);
+        }
+    }
+
+    private async Task StopClientsAsync()
+    {
+        foreach (var client in Clients)
+        {
+            client.Stop();
+        }
+
+        Task[] clientTasks;
+        lock (_lifecycleLock)
+        {
+            clientTasks = _clientTasks.ToArray();
+        }
+        if (clientTasks.Length > 0)
+        {
+            await Task.WhenAll(clientTasks).ConfigureAwait(false);
+        }
+    }
+
+    private void ClientOnConnectionClosed(object? sender, EventArgs eventArgs)
+    {
+        if (sender is ITcpServerClient client)
+        {
+            RemoveClient(client);
+        }
+    }
+
+    private void RemoveClient(ITcpServerClient client)
+    {
+        client.ConnectionClosed -= ClientOnConnectionClosed;
+        if (_clients.TryRemove(client, out _))
+        {
+            ClientDisconnected?.Invoke(this, new ClientDisconnectedEventArgs(client));
+        }
     }
 }

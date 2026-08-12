@@ -68,7 +68,8 @@ internal sealed class CatSession(ITcpServerClient client, ICatCommandSink comman
     /// <param name="response">The CAT response to send.</param>
     /// <param name="cancellationToken">A token that cancels the send operation.</param>
     /// <returns>A task that completes when the response is sent.</returns>
-    internal ValueTask SendAsync(string response, CancellationToken cancellationToken) => client.SendAsync(response, cancellationToken);
+    internal ValueTask SendAsync(string response, CancellationToken cancellationToken) =>
+        client.SendAsync(Encoding.ASCII.GetBytes(response), cancellationToken);
 
     /// <summary>
     /// Gets a value that indicates whether the underlying client remains connected.

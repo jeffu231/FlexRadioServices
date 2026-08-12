@@ -18,12 +18,24 @@ public abstract class ConnectedRadioServiceBase: BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         InitializeConnectedRadio();
-        
         _flexRadioService.PropertyChanged += FlexRadioServiceOnPropertyChanged;
 
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            await DoWorkAsync(stoppingToken);
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                await DoWorkAsync(stoppingToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _flexRadioService.PropertyChanged -= FlexRadioServiceOnPropertyChanged;
+            if (ConnectedRadio is not null)
+            {
+                RemoveRadioListeners(ConnectedRadio);
+                ConnectedRadioChanged(this, new ConnectedRadioEventArgs(ConnectedRadio));
+                ConnectedRadio = null;
+            }
         }
     }
 

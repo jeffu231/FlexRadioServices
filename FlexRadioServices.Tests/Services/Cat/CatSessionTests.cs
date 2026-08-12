@@ -33,8 +33,8 @@ public sealed class CatSessionTests
         var sessionB = new CatSession(serverB, sink, NullLogger.Instance);
         serverA.DataReceived += (_, bytes, token) => sessionA.ProcessAsync(bytes, token);
         serverB.DataReceived += (_, bytes, token) => sessionB.ProcessAsync(bytes, token);
-        var readA = serverA.StartAsync();
-        var readB = serverB.StartAsync();
+        var readA = serverA.RunAsync(CancellationToken.None);
+        var readB = serverB.RunAsync(CancellationToken.None);
 
         await clientA.GetStream().WriteAsync(Encoding.ASCII.GetBytes("I"));
         await clientB.GetStream().WriteAsync(Encoding.ASCII.GetBytes("ID;"));
@@ -140,7 +140,9 @@ public sealed class CatSessionTests
         public string RemoteEndPoint { get; } = remoteEndPoint;
         public bool Stopped { get; private set; }
 
-        public ValueTask SendAsync(string message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+        public ValueTask SendAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+
+        public Task RunAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
         public void Stop()
         {

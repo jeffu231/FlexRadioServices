@@ -22,8 +22,6 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, IC
     private readonly PortSettings _portSettings;
     private readonly ITcpServer _tcpServer;
     private readonly ILogger<FlexCatPortService> _logger;
-    private CancellationTokenSource? _cancellationToken;
-    private Task? _serverTask;
     private Slice? _slice;
     private Slice? _slice2;
     private bool _split;  //placeholder
@@ -33,6 +31,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, IC
     private bool _shortFreq;
     private double _splitFreq;
     private bool _splitXit;
+    private CancellationToken _stoppingToken;
 
     private bool _autoRemoveSplitSlice = false;
 
@@ -54,20 +53,43 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, IC
     {
         _logger.LogInformation("{Name} - Starting CAT on port {Port} ",
             _portSettings.PortFriendlyName, _portSettings.PortNumber);
-        _cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        _serverTask = _tcpServer.StartListener(IPAddress.Any, _portSettings.PortNumber, cancellationToken);
         _tcpServer.PortFriendlyName = _portSettings.PortFriendlyName;
         _tcpServer.ClientConnected += TcpServerOnClientConnected;
         _tcpServer.ClientDisconnected += TcpServerOnClientDisconnected;
-
-        if (_serverTask.IsCompleted)
-        {
-            return _serverTask;
-        }
-
-        _logger.LogDebug("{Name} - Tcp Server started for {Port}", 
-            _portSettings.PortFriendlyName, _portSettings.PortNumber);
         return base.StartAsync(cancellationToken);
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _stoppingToken = stoppingToken;
+        try
+        {
+            var listenerTask = _tcpServer.RunAsync(IPAddress.Any, _portSettings.PortNumber, stoppingToken);
+            if (listenerTask.IsFaulted)
+            {
+                await listenerTask.ConfigureAwait(false);
+            }
+
+            var radioTask = base.ExecuteAsync(stoppingToken);
+            await await Task.WhenAny(listenerTask, radioTask).ConfigureAwait(false);
+        }
+        finally
+        {
+            _tcpServer.ClientConnected -= TcpServerOnClientConnected;
+            _tcpServer.ClientDisconnected -= TcpServerOnClientDisconnected;
+            foreach (var client in _sessions.Keys)
+            {
+                client.DataReceived -= ClientOnDataReceived;
+            }
+
+            _sessions.Clear();
+        }
+    }
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        await _tcpServer.StopAsync(cancellationToken).ConfigureAwait(false);
+        await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 
     protected override async Task DoWorkAsync(CancellationToken cancellationToken)
@@ -120,26 +142,6 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, IC
     ValueTask ICatCommandSink.EnqueueAsync(CatCommand command, CancellationToken cancellationToken) =>
         _commandQueue.Writer.WriteAsync(command, cancellationToken);
 
-
-    public override async Task StopAsync(CancellationToken cancellationToken)
-    {
-        // Stop called without start
-        if (_serverTask == null)
-        {
-            return;
-        }
-
-        try
-        {
-            // Signal cancellation to the executing method
-            _cancellationToken!.Cancel();
-        }
-        finally
-        {
-            // Wait until the task completes or the stop token triggers
-            await Task.WhenAny(_serverTask, Task.Delay(Timeout.Infinite, cancellationToken)).ConfigureAwait(false);
-        }
-    }
 
     protected override void ConnectedRadioChanged(object? sender, ConnectedRadioEventArgs args)
     {
@@ -303,10 +305,11 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, IC
 
     private async Task SendResponseToAllAsync(string command)
     {
-        _logger.LogTrace("Sending command {Command} to {Num} client(s)", command, _tcpServer.Clients.Count);
-        foreach (var client in _tcpServer.Clients)
+        var clients = _tcpServer.Clients;
+        _logger.LogTrace("Sending command {Command} to {Num} client(s)", command, clients.Count);
+        foreach (var client in clients)
         {
-            await client.SendAsync(command, CancellationToken.None);
+            await client.SendAsync(System.Text.Encoding.ASCII.GetBytes(command), _stoppingToken);
         }
     }
 
