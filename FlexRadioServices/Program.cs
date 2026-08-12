@@ -11,17 +11,20 @@ using FlexRadioServices.Utils;
 
 namespace FlexRadioServices
 {
-    public static class Program
+    public partial class Program
     {
         //private static readonly AppSettings Settings = new AppSettings();
         static void Main(string[] args)
         {
             
-            API.IsGUI = false;
-            API.ProgramName = "FlexRadioService";
-            API.Init();
-            
             var builder = WebApplication.CreateBuilder(args);
+
+            if (!builder.Environment.IsEnvironment("Testing"))
+            {
+                API.IsGUI = false;
+                API.ProgramName = "FlexRadioService";
+                API.Init();
+            }
 
             ConfigureServices(builder);
 
