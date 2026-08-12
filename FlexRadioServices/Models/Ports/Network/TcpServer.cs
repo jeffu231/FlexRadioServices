@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Net;
 using System.Net.Sockets;
 
@@ -22,7 +23,17 @@ public sealed class TcpServer(ILogger<TcpServer> logger, IServiceProvider servic
     public event EventHandler<ClientDisconnectedEventArgs>? ClientDisconnected;
 
     /// <inheritdoc/>
-    public IReadOnlyCollection<ITcpServerClient> Clients => _clients.Keys.ToArray();
+    public ImmutableArray<RadioClientSessionSnapshot> GetClients() =>
+        _clients.Keys.Select(client => new RadioClientSessionSnapshot(client.RemoteEndPoint)).ToImmutableArray();
+
+    /// <inheritdoc/>
+    public async Task SendToAllAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken)
+    {
+        foreach (var client in _clients.Keys.ToArray())
+        {
+            await client.SendAsync(data, cancellationToken).ConfigureAwait(false);
+        }
+    }
 
     /// <inheritdoc/>
     public IPEndPoint? LocalEndpoint { get; private set; }
@@ -140,7 +151,7 @@ public sealed class TcpServer(ILogger<TcpServer> logger, IServiceProvider servic
 
     private async Task StopClientsAsync()
     {
-        foreach (var client in Clients)
+        foreach (var client in _clients.Keys.ToArray())
         {
             client.Stop();
         }

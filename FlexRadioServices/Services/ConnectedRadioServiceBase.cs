@@ -6,19 +6,20 @@ namespace FlexRadioServices.Services;
 
 public abstract class ConnectedRadioServiceBase: BackgroundService
 {
-    private readonly IFlexRadioService _flexRadioService;
+    private readonly FlexRadioService _flexRadioService;
     protected RadioProxy? ConnectedRadio;
     private readonly ILogger _logger;
     protected ConnectedRadioServiceBase(IFlexRadioService flexRadioService, ILogger logger)
     {
         _logger = logger;
-        _flexRadioService = flexRadioService;
+        _flexRadioService = flexRadioService as FlexRadioService
+            ?? throw new ArgumentException("Connected radio services require FlexRadioService.", nameof(flexRadioService));
     }
     
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         InitializeConnectedRadio();
-        _flexRadioService.PropertyChanged += FlexRadioServiceOnPropertyChanged;
+        _flexRadioService.ConnectedRadioChanged += FlexRadioServiceOnConnectedRadioChanged;
 
         try
         {
@@ -29,7 +30,7 @@ public abstract class ConnectedRadioServiceBase: BackgroundService
         }
         finally
         {
-            _flexRadioService.PropertyChanged -= FlexRadioServiceOnPropertyChanged;
+            _flexRadioService.ConnectedRadioChanged -= FlexRadioServiceOnConnectedRadioChanged;
             if (ConnectedRadio is not null)
             {
                 RemoveRadioListeners(ConnectedRadio);
@@ -45,32 +46,30 @@ public abstract class ConnectedRadioServiceBase: BackgroundService
         await Task.Delay(5000, cancellationToken);
     } 
     
-    private void FlexRadioServiceOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void FlexRadioServiceOnConnectedRadioChanged(object? sender, EventArgs e)
     {
-        if (e.PropertyName != null && e.PropertyName.Equals(nameof(IFlexRadioService.ConnectedRadio)))
+        var previousRadio = ConnectedRadio;
+        if (ConnectedRadio != null)
         {
-            var previousRadio = ConnectedRadio;
-            if (ConnectedRadio != null)
-            {
-                RemoveRadioListeners(ConnectedRadio);
-            }
-            
-            ConnectedRadio = _flexRadioService.ConnectedRadio;
-            
-            if (ConnectedRadio != null)
-            {
-                AddRadioListeners(ConnectedRadio);
-            }
-            
-            ConnectedRadioChanged(this, new ConnectedRadioEventArgs(previousRadio));
+            RemoveRadioListeners(ConnectedRadio);
         }
+
+        ConnectedRadio = _flexRadioService.GetConnectedRadioHandle();
+
+        if (ConnectedRadio != null)
+        {
+            AddRadioListeners(ConnectedRadio);
+        }
+
+        ConnectedRadioChanged(this, new ConnectedRadioEventArgs(previousRadio));
     }
 
     private void InitializeConnectedRadio()
     {
-        if (_flexRadioService.ConnectedRadio != null)
+        var connectedRadio = _flexRadioService.GetConnectedRadioHandle();
+        if (connectedRadio != null)
         {
-            ConnectedRadio = _flexRadioService.ConnectedRadio;
+            ConnectedRadio = connectedRadio;
             AddRadioListeners(ConnectedRadio);
             ConnectedRadioChanged(this, new ConnectedRadioEventArgs(null));
         }

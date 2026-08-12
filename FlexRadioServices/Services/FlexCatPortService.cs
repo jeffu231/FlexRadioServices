@@ -305,12 +305,9 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, IC
 
     private async Task SendResponseToAllAsync(string command)
     {
-        var clients = _tcpServer.Clients;
-        _logger.LogTrace("Sending command {Command} to {Num} client(s)", command, clients.Count);
-        foreach (var client in clients)
-        {
-            await client.SendAsync(System.Text.Encoding.ASCII.GetBytes(command), _stoppingToken);
-        }
+        var clients = _tcpServer.GetClients();
+        _logger.LogTrace("Sending command {Command} to {Num} client(s)", command, clients.Length);
+        await _tcpServer.SendToAllAsync(System.Text.Encoding.ASCII.GetBytes(command), _stoppingToken);
     }
 
     private async Task InitiateCommand(string command)

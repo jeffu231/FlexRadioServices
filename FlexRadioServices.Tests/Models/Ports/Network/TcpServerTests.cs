@@ -24,7 +24,7 @@ public sealed class TcpServerTests
         stopping.Cancel();
 
         await listenerTask.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.Empty(server.Clients);
+        Assert.Empty(server.GetClients());
         Assert.Null(server.LocalEndpoint);
     }
 
@@ -41,6 +41,32 @@ public sealed class TcpServerTests
         await server.StopAsync(CancellationToken.None);
     }
 
+    [Fact]
+    public async Task Concurrency_GetClientsCanRunDuringDisconnect()
+    {
+        using var services = CreateServiceProvider();
+        var server = new TcpServer(NullLogger<TcpServer>.Instance, services);
+        using var stopping = new CancellationTokenSource();
+        var listenerTask = server.RunAsync(IPAddress.Loopback, 0, stopping.Token);
+        var endpoint = Assert.IsType<IPEndPoint>(server.LocalEndpoint);
+        using var client = new TcpClient();
+
+        await client.ConnectAsync(endpoint.Address, endpoint.Port);
+        await WaitForClientAsync(server);
+        var readers = Enumerable.Range(0, 4).Select(_ => Task.Run(() =>
+        {
+            for (var index = 0; index < 5_000; index++)
+            {
+                server.GetClients();
+            }
+        }));
+
+        stopping.Cancel();
+        await Task.WhenAll(readers);
+        await listenerTask.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Empty(server.GetClients());
+    }
+
     private static ServiceProvider CreateServiceProvider() => new ServiceCollection()
         .AddTransient<ITcpServerClient>(_ => new TcpServerClient(NullLogger<TcpServerClient>.Instance))
         .BuildServiceProvider();
@@ -48,7 +74,7 @@ public sealed class TcpServerTests
     private static async Task WaitForClientAsync(ITcpServer server)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        while (server.Clients.Count == 0)
+        while (server.GetClients().Length == 0)
         {
             await Task.Delay(10, timeout.Token);
         }

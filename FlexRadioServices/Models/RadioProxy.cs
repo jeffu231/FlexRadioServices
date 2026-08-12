@@ -1,15 +1,14 @@
 using System.ComponentModel;
 using Flex.Smoothlake.FlexLib;
-using Flex.UiWpfFramework.Mvvm;
 using Flex.Util;
 using Newtonsoft.Json;
 
 namespace FlexRadioServices.Models;
 
-public sealed class RadioProxy: ObservableObject
+public sealed class RadioProxy
 {
-    private readonly Radio _radio;
-    public RadioProxy(Radio radio)
+    private readonly Flex.Smoothlake.FlexLib.Radio _radio;
+    public RadioProxy(Flex.Smoothlake.FlexLib.Radio radio)
     {
         _radio = radio;
         radio.PropertyChanged += RadioOnPropertyChanged;
@@ -18,11 +17,13 @@ public sealed class RadioProxy: ObservableObject
     private void RadioOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         //This is not inclusive so need to revisit this.
-        RaisePropertyChanged(e.PropertyName);
+        PropertyChanged?.Invoke(this, e);
     }
 
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     [JsonIgnore]
-    internal Radio Radio => _radio;
+    internal Flex.Smoothlake.FlexLib.Radio Radio => _radio;
 
     /// <summary>
     /// The TCP IP address of the radio

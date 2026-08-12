@@ -1,4 +1,5 @@
 using System.Net;
+using System.Collections.Immutable;
 
 namespace FlexRadioServices.Models.Ports.Network;
 
@@ -20,7 +21,10 @@ public interface ITcpServer
     /// <summary>
     /// Gets a snapshot of the currently connected clients.
     /// </summary>
-    IReadOnlyCollection<ITcpServerClient> Clients { get; }
+    ImmutableArray<RadioClientSessionSnapshot> GetClients();
+
+    /// <summary>Sends data to every client connected at the time of the call.</summary>
+    Task SendToAllAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken);
 
     /// <summary>
     /// Gets the listener endpoint after the listener has started.

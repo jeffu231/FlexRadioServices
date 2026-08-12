@@ -1,19 +1,22 @@
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using FlexRadioServices.Models;
+using System.Collections.Immutable;
+using FlexRadioServices.Models.Radio;
 
 namespace FlexRadioServices.Services;
 
-public interface IFlexRadioService: INotifyPropertyChanged
+public interface IFlexRadioService
 {
-    ObservableCollection<RadioProxy> DiscoveredRadios { get; set; }
+    /// <summary>Gets a copied snapshot of discovered radios.</summary>
+    ImmutableArray<RadioSnapshot> GetDiscoveredRadios();
 
-    RadioProxy? ConnectedRadio { get; set; }
+    /// <summary>Gets a copied snapshot of the connected radio, if any.</summary>
+    RadioSnapshot? GetConnectedRadio();
+
+    /// <summary>Gets copied snapshots of GUI clients for a radio.</summary>
+    ImmutableArray<RadioClientSnapshot> GetRadioClients(string serial);
 
     void DisconnectSession();
     
-    void ConnectToRadio(RadioProxy radio);
+    bool ConnectToRadio(string serial);
 
-    void DisconnectRadio(RadioProxy radio);
+    bool DisconnectRadio(string serial);
 }
-

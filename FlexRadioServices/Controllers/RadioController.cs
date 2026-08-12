@@ -2,9 +2,9 @@ using System.Net;
 using Asp.Versioning;
 using FlexRadioServices.Attributes;
 using FlexRadioServices.Models;
+using FlexRadioServices.Models.Radio;
 using FlexRadioServices.Services;
 using FlexRadioServices.Utils;
-using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.JsonPatch.SystemTextJson;
 using Microsoft.AspNetCore.Mvc;
 using Spot = FlexRadioServices.Models.Spot;
@@ -28,14 +28,14 @@ public class RadioController: ControllerBase
     /// <summary>
     /// Get a list of all discovered radios.
     /// </summary>
-    /// <returns>A List of type <see cref="RadioProxy">Radio</see></returns>
+    /// <returns>A copied list of discovered radio state.</returns>
     [HttpGet("radios")]
     [MapToApiVersion("1.0")]
-    [ProducesResponseType(typeof(IEnumerable<RadioProxy>), (int)HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(IEnumerable<RadioSnapshot>), (int)HttpStatusCode.OK)]
     [Produces("application/json")]
     public async Task<IActionResult> Radios()
     {
-        return await Task.FromResult(Ok(_flexRadioService.DiscoveredRadios.ToList()));
+        return await Task.FromResult(Ok(_flexRadioService.GetDiscoveredRadios()));
     }
     
     /// <summary>
@@ -50,14 +50,14 @@ public class RadioController: ControllerBase
     [Produces("application/json")]
     public IActionResult Connect(string id)
     {
-        var radio = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        var radio = _flexRadioService.GetDiscoveredRadios().FirstOrDefault(r => r.Serial.Equals(id.Trim(), StringComparison.Ordinal));
         if (radio != null)
         {
-            if (radio.Radio.Connected)
+            if (radio.Connected)
             {
                 return Ok("Already Connected");
             }
-            _flexRadioService.ConnectToRadio(radio);
+            _flexRadioService.ConnectToRadio(radio.Serial);
             return Ok("Connected");
         }
         
@@ -77,14 +77,14 @@ public class RadioController: ControllerBase
     [Produces("application/json")]
     public IActionResult Disconnect(string id)
     {
-        var radio = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        var radio = _flexRadioService.GetDiscoveredRadios().FirstOrDefault(r => r.Serial.Equals(id.Trim(), StringComparison.Ordinal));
         if (radio != null)
         {
-            if (!radio.Radio.Connected)
+            if (!radio.Connected)
             {
                 return Ok("Already disconnected");
             }
-            _flexRadioService.DisconnectRadio(radio);
+            _flexRadioService.DisconnectRadio(radio.Serial);
             return Ok("Disconnected");
         }
         
@@ -96,22 +96,22 @@ public class RadioController: ControllerBase
     /// Get all GUI clients for a specific radio.
     /// </summary>
     /// <param name="id">The id of the radio.</param>
-    /// <returns>A List of type <see cref="RadioClientProxy">RadioClient</see></returns>
+    /// <returns>A copied list of GUI client state.</returns>
     [HttpGet("radios/{id}/clients")]
     [MapToApiVersion("1.0")]
-    [ProducesResponseType(typeof(IEnumerable<RadioClientProxy>), (int)HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(IEnumerable<RadioClientSnapshot>), (int)HttpStatusCode.OK)]
     [ProducesResponseType((int)HttpStatusCode.NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType((int)HttpStatusCode.ServiceUnavailable, Type = typeof(ProblemDetails))]
     [Produces("application/json")]
     public IActionResult Clients(string id)
     {
-        var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
-        if (radioProxy != null)
+        var radio = _flexRadioService.GetDiscoveredRadios()
+            .FirstOrDefault(candidate => candidate.Serial.Equals(id.Trim(), StringComparison.Ordinal));
+        if (radio != null)
         {
-            if (radioProxy.Connected)
+            if (radio.Connected)
             {
-                var clients = radioProxy.Radio.GuiClients.Select(c => new RadioClientProxy(c));
-                return Ok(clients);
+                return Ok(_flexRadioService.GetRadioClients(radio.Serial));
             }
             
             _logger.LogError("Radio {Id} not found", id);
@@ -135,7 +135,7 @@ public class RadioController: ControllerBase
     [Produces("application/json")]
     public IActionResult Slices(string id)
     {
-        var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        var radioProxy = GetRadioHandle(id);
         if (radioProxy != null)
         {
             if (radioProxy.Connected)
@@ -166,7 +166,7 @@ public class RadioController: ControllerBase
     [Produces("application/json")]
     public IActionResult Slices(string id, string clientId)
     {
-        var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        var radioProxy = GetRadioHandle(id);
         if (radioProxy != null)
         {
             if (radioProxy.Connected)
@@ -205,7 +205,7 @@ public class RadioController: ControllerBase
     [Produces("application/json")]
     public IActionResult Slice(string id, string clientId, [SliceLetter] string letter)
     {
-        var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        var radioProxy = GetRadioHandle(id);
         if (radioProxy != null)
         {
             if (radioProxy.Connected)
@@ -252,7 +252,7 @@ public class RadioController: ControllerBase
     public IActionResult PatchSlice(string id, string clientId, [SliceLetter] string letter, 
         [FromBody] JsonPatchDocument<SliceProxy> slicePatch)
     {
-        var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        var radioProxy = GetRadioHandle(id);
         if (radioProxy != null)
         {
             if (radioProxy.Connected)
@@ -302,7 +302,7 @@ public class RadioController: ControllerBase
     [ProducesResponseType((int)HttpStatusCode.ServiceUnavailable, Type = typeof(ProblemDetails))]
     public IActionResult Spot(string id, [FromBody] List<Spot> spots)
     {
-        var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        var radioProxy = GetRadioHandle(id);
         if (radioProxy != null)
         {
             if (radioProxy.Connected)
@@ -346,7 +346,7 @@ public class RadioController: ControllerBase
     [ProducesResponseType((int)HttpStatusCode.ServiceUnavailable, Type = typeof(ProblemDetails))]   
     public IActionResult Spot(string id)
     {
-        var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        var radioProxy = GetRadioHandle(id);
         if (radioProxy != null)
         {
             if (radioProxy.Connected)
@@ -374,7 +374,7 @@ public class RadioController: ControllerBase
         {
             return Problem("callsign is null or empty", statusCode: 400);
         }
-        var radioProxy = _flexRadioService.DiscoveredRadios.FirstOrDefault(r => r.Serial.Equals(id.Trim()));
+        var radioProxy = GetRadioHandle(id);
         if (radioProxy != null)
         {
             if (radioProxy.Connected)
@@ -390,4 +390,7 @@ public class RadioController: ControllerBase
         _logger.LogError("Radio {Id} not found", id);
         return Problem($"Radio {id} not found.", statusCode: 404);
     }
+
+    private RadioProxy? GetRadioHandle(string id) =>
+        (_flexRadioService as FlexRadioService)?.GetRadioHandle(id.Trim());
 }
