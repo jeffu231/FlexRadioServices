@@ -36,6 +36,24 @@ client ID. Designated listeners require a VFO A slice letter from A through H.
 MQTT is disabled when `BrokerHost` is empty; when enabled, it requires a valid
 port, client ID, root topic, and either both MQTT credentials or neither.
 
+## Testing
+
+Run the hardware-independent safety net from the repository root:
+
+    dotnet test FlexRadioServices.sln -c Release
+
+The test project uses loopback TCP, in-memory configuration, a fake MQTT
+connection, and an ASP.NET Core test host. It does not initialize FlexLib radio
+discovery.
+
+Hardware discovery is opt-in. Connect a test machine to the trusted radio LAN,
+ensure at least one radio is discoverable, then run:
+
+    FLEXRADIOSERVICES_RUN_HARDWARE_TESTS=1 dotnet test FlexRadioServices.Tests/FlexRadioServices.Tests.csproj -c Release --filter Category=Hardware
+
+Without that environment variable, hardware tests are reported as skipped and
+do not initialize FlexLib or contact a radio.
+
 ## Docker
 
 The application is packaged as a docker image on GHCR. Example docker-compose.yml is provided.

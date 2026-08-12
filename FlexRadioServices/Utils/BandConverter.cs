@@ -3,10 +3,14 @@ namespace FlexRadioServices.Utils;
 public static class BandConverter
 {
     /// <summary>
-    /// Converts frequency in hz to band
+    /// Converts an amateur-radio frequency in kilohertz to its conventional
+    /// meter-band designator.
     /// </summary>
-    /// <param name="freq"></param>
-    /// <returns></returns>
+    /// <param name="freq">A frequency in kilohertz.</param>
+    /// <returns>
+    /// A meter-band designator when <paramref name="freq"/> is within a
+    /// supported inclusive range; otherwise, <c>0</c>.
+    /// </returns>
     public static int ConvertToBand(double freq)
     {
         if (freq is >= 135 and <= 138)
