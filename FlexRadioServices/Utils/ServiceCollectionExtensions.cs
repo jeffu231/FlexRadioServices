@@ -60,6 +60,7 @@ public static class ServiceCollectionExtensions
             return optionBuilder.Build();
         });
         services.AddSingleton<MqttClientService>();
+        services.AddSingleton<IMqttClientConnectionFactory, MqttClientConnectionFactory>();
         services.AddSingleton<IHostedService>(serviceProvider => serviceProvider.GetService<MqttClientService>()!);
         services.AddSingleton<IMqttClientService>(serviceProvider =>
         {

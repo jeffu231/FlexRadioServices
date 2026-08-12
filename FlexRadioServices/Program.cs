@@ -43,6 +43,10 @@ namespace FlexRadioServices
             app.UseStatusCodePages();
 
             app.MapControllers();
+            app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+            {
+                Predicate = registration => registration.Tags.Contains("ready")
+            });
             
             app.Run();
         }
@@ -54,6 +58,7 @@ namespace FlexRadioServices
             var services = builder.Services;
             services.AddRuntimeConfiguration(builder.Configuration);
             services.AddHostedService<RuntimeConfigurationDiagnosticsService>();
+            services.AddHealthChecks();
             
             services.AddSingleton<IFlexRadioService, FlexRadioService>();
             services.AddSingleton<ISliceCommandService, SliceCommandService>();
@@ -68,6 +73,7 @@ namespace FlexRadioServices
             {
                 services.AddMqttClientHostedService(mqttBrokerSettings);
                 services.AddHostedService<MqttRadioInfoPublisher>();
+                services.AddHealthChecks().AddCheck<MqttHealthCheck>("mqtt", tags: ["ready"]);
             }
             services.AddHostedService<RadioManagerService>();
 

@@ -22,6 +22,9 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.flex-radio-services-api.rule=Host(`$HOSTNAME`) && (PathPrefix(`/api/frs/`))"
       - "traefik.http.services.flex-radio-services-api.loadbalancer.server.port=8080"
+      - "traefik.http.services.flex-radio-services-api.loadbalancer.healthcheck.path=/health/ready"
+      - "traefik.http.services.flex-radio-services-api.loadbalancer.healthcheck.interval=30s"
+      - "traefik.http.services.flex-radio-services-api.loadbalancer.healthcheck.timeout=5s"
 
 networks:
   traefik-net:
