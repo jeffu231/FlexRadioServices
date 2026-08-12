@@ -9,3 +9,4 @@ riderModule.iml
 .env
 FlexRadioServices.sln.DotSettings.user
 TestResults/
+appsettings.user.json
