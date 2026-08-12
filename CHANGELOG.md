@@ -1,4 +1,12 @@
 BuildTestConsole Changelog
+<a name="2.4.1"></a>
+## [2.4.1](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v2.4.1) (2026-08-12)
+
+### Continuous Integration
+
+* Specify the project for the publish ([b48cff6](https://www.github.com/jeffu231/FlexRadioServices/commit/b48cff6ce39c4bf58da6d0f29a5751bbdbd943a5))
+* Update action versions ([2a1ba0c](https://www.github.com/jeffu231/FlexRadioServices/commit/2a1ba0cfba87f7af64ce813752deb48103df17b7))
+
 <a name="2.4.0"></a>
 ## [2.4.0](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v2.4.0) (2026-08-12)
 
