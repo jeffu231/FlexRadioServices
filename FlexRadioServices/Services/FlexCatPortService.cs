@@ -22,6 +22,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, IC
     private readonly PortSettings _portSettings;
     private readonly ITcpServer _tcpServer;
     private readonly ILogger<FlexCatPortService> _logger;
+    private readonly object _selectedSlicesLock = new();
     private Slice? _slice;
     private Slice? _slice2;
     private bool _split;  //placeholder
@@ -154,7 +155,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, IC
 
             args.PreviousRadio.Radio.SliceAdded -= RadioOnSliceAdded;
             args.PreviousRadio.Radio.SliceRemoved -= RadioOnSliceRemoved;
-            _slice = null;
+            ClearSelectedSlices();
         }
 
         if (ConnectedRadio != null)
@@ -174,9 +175,17 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, IC
         _logger.LogDebug("{Name} - Removed slice {Letter} listener for radio {RadioSerial} on port {Port}", 
             _portSettings.PortFriendlyName, slc.Letter, slc.Radio.Serial, _portSettings.PortNumber);
         slc.PropertyChanged -= SliceOnPropertyChanged;
-        if (slc == _slice)
+        lock (_selectedSlicesLock)
         {
-            _slice = null;
+            if (ReferenceEquals(slc, _slice))
+            {
+                _slice = null;
+            }
+
+            if (ReferenceEquals(slc, _slice2))
+            {
+                _slice2 = null;
+            }
         }
     }
 
@@ -191,36 +200,94 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, IC
 
         if (_portSettings.PortSliceType == PortSliceType.Designated && slc.Letter == _portSettings.VfoASliceLetter)
         {
-            _slice = slc;
+            lock (_selectedSlicesLock)
+            {
+                _slice = slc;
+            }
             return;
         }
         
         if (_portSettings.PortSliceType == PortSliceType.Designated && slc.Letter == _portSettings.VfoBSliceLetter)
         {
-            _slice2 = slc;
+            lock (_selectedSlicesLock)
+            {
+                _slice2 = slc;
+            }
             return;
         }
 
         if (_portSettings.PortSliceType == PortSliceType.Transmit && slc.IsTransmitSlice)
         {
-            _slice = slc;
+            lock (_selectedSlicesLock)
+            {
+                _slice = slc;
+            }
             return;
         }
 
         if (_portSettings.PortSliceType == PortSliceType.Active && slc.Active)
         {
-            _slice = slc;
+            lock (_selectedSlicesLock)
+            {
+                _slice = slc;
+            }
         }
     }
 
-    private bool IsClientSlice(Slice slc)
+    private void ClearSelectedSlices()
     {
-        var clientId = GetClientId(slc);
-        if (clientId == _portSettings.ClientId)
+        lock (_selectedSlicesLock)
         {
+            _slice = null;
+            _slice2 = null;
+        }
+    }
+
+    private void ClearInvalidSelectedSlices()
+    {
+        if (_slice is not null && !IsCurrentClientSlice(_slice))
+        {
+            _slice = null;
+        }
+
+        if (_slice2 is not null && !IsCurrentClientSlice(_slice2))
+        {
+            _slice2 = null;
+        }
+    }
+
+    private bool TryGetCurrentSlice(bool secondary, out Slice slice)
+    {
+        var selectedSlice = secondary ? _slice2 : _slice;
+        if (selectedSlice is not null && IsCurrentClientSlice(selectedSlice))
+        {
+            slice = selectedSlice;
             return true;
         }
+
+        if (secondary)
+        {
+            _slice2 = null;
+        }
+        else
+        {
+            _slice = null;
+        }
+
+        slice = null!;
         return false;
+    }
+
+    private bool IsCurrentClientSlice(Slice slice)
+    {
+        var radio = ConnectedRadio?.Radio;
+        if (radio is null || !ReferenceEquals(slice.Radio, radio) || !radio.SliceList.Contains(slice))
+        {
+            return false;
+        }
+
+        var client = radio.FindGUIClientByClientHandle(slice.ClientHandle);
+        return client?.ClientID == _portSettings.ClientId;
     }
 
     private string GetClientId(Slice s)
@@ -260,7 +327,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, IC
         {
             _logger.LogDebug("{Name} - Slice property {Property} changed {Letter}, {Handle}",
                 _portSettings.PortFriendlyName, e.PropertyName, slice.Letter, slice.ClientHandle);
-            if (!IsClientSlice(slice))
+            if (!IsCurrentClientSlice(slice))
             {
                 _logger.LogDebug("{Name} - Slice property {Property} changed {Letter}, {Handle} not for our client",
                     _portSettings.PortFriendlyName, e.PropertyName, slice.Letter, slice.ClientHandle);
@@ -270,7 +337,10 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, IC
             if (e.PropertyName == nameof(Slice.IsTransmitSlice) &&
                 _portSettings.PortSliceType == PortSliceType.Transmit)
             {
-                _slice = TransmitSlice;
+                lock (_selectedSlicesLock)
+                {
+                    _slice = TransmitSlice;
+                }
                 _logger.LogDebug("{Name} - Setting TX _slice to {Letter}",_portSettings.PortFriendlyName, _slice?.Letter);
                 await InitiateCommand("IF");
                 return;
@@ -279,7 +349,10 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, IC
             if (e.PropertyName == nameof(Slice.Active) &&
                 _portSettings.PortSliceType == PortSliceType.Active)
             {
-                _slice = ActiveSlice;
+                lock (_selectedSlicesLock)
+                {
+                    _slice = ActiveSlice;
+                }
                 
                 await InitiateCommand("IF");
                 return;
@@ -319,6 +392,15 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, IC
 
     private string ProcessCommand(string input)
     {
+        lock (_selectedSlicesLock)
+        {
+            return ProcessCommandLocked(input);
+        }
+    }
+
+    private string ProcessCommandLocked(string input)
+    {
+        ClearInvalidSelectedSlices();
         input = input.ToUpper();
         string response = "?;";
         if (input.Length < 2)
@@ -504,39 +586,57 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, IC
     private string Parse_FT(string command)
     {
         string ftResponse = "?;";
-        if (_slice != null)
+        switch (command)
         {
-            switch (command)
-            {
-                case "FT":
-                    if (_slice.IsTransmitSlice)
-                    {
-                        ftResponse = "FT0;";
-                        break;
-                    }
+            case "FT":
+                if (TryGetCurrentSlice(false, out var primarySlice) && primarySlice.IsTransmitSlice)
+                {
+                    return "FT0;";
+                }
 
-                    if (_slice2 != null && _slice2.IsTransmitSlice)
-                    {
-                        ftResponse = "FT1;";
-                    }
+                if (TryGetCurrentSlice(true, out var secondarySlice) && secondarySlice.IsTransmitSlice)
+                {
+                    return "FT1;";
+                }
 
-                    break;
-                case "FT0":
-                    _slice.IsTransmitSlice = true;
-                    ftResponse = "";
-                    break;
-                case "FT1":
-                    if (_slice2 != null && _slice2.IsTransmitSlice)
-                    {
-                        _slice2.IsTransmitSlice = true;
-                    }
-                    ftResponse = "";
-                    break;
-            }
+                break;
+            case "FT0":
+                if (TryGetCurrentSlice(false, out primarySlice))
+                {
+                    ftResponse = SetTransmitSlice(() => primarySlice.IsTransmitSlice = true);
+                }
+
+                break;
+            case "FT1":
+                var hasSecondarySlice = TryGetCurrentSlice(true, out secondarySlice);
+                return SelectSecondaryTransmitSlice(hasSecondarySlice,
+                    () => secondarySlice.IsTransmitSlice = true);
         }
 
         return ftResponse;
     }
+
+    /// <summary>
+    /// Selects a validated CAT slice for transmit and preserves the CAT
+    /// command's legacy no-response success behavior.
+    /// </summary>
+    /// <param name="select">The operation that selects the current CAT slice for transmit.</param>
+    /// <returns>An empty response for a successful selection.</returns>
+    internal static string SetTransmitSlice(Action select)
+    {
+        ArgumentNullException.ThrowIfNull(select);
+        select();
+        return string.Empty;
+    }
+
+    /// <summary>
+    /// Selects the secondary CAT slice for transmit when it is currently available.
+    /// </summary>
+    /// <param name="hasSecondarySlice"><see langword="true"/> when a current secondary slice is available; otherwise, <see langword="false"/>.</param>
+    /// <param name="select">The operation that selects the current secondary slice for transmit.</param>
+    /// <returns>An empty response when the slice is selected; otherwise, an invalid-command response.</returns>
+    internal static string SelectSecondaryTransmitSlice(bool hasSecondarySlice, Action select) =>
+        hasSecondarySlice ? SetTransmitSlice(select) : "?;";
 
     private string Parse_ID(string command)
     {
