@@ -5,6 +5,9 @@ using MQTTnet.Client;
 
 namespace FlexRadioServices.Services;
 
+/// <summary>
+/// Manages the connection to, and publishing through, the configured MQTT broker.
+/// </summary>
 public class MqttClientService : IMqttClientService
 {
     private readonly IMqttClient _mqttClient;
@@ -29,7 +32,8 @@ public class MqttClientService : IMqttClientService
         _mqttClient.ApplicationMessageReceivedAsync += HandleApplicationMessageReceivedAsync;
     }
 
-    public async Task Publish(string topic, string value)
+    /// <inheritdoc />
+    public async Task PublishAsync(string topic, string value, CancellationToken cancellationToken)
     {
         var message = new MqttApplicationMessageBuilder()
             .WithTopic($"{_mqttBrokerSettings.Value.RootTopic}/{topic}")
@@ -37,7 +41,7 @@ public class MqttClientService : IMqttClientService
             .Build();
         if (_mqttClient.IsConnected)
         {
-            await _mqttClient.PublishAsync(message, CancellationToken.None);
+            await _mqttClient.PublishAsync(message, cancellationToken);
         }
     }
 
