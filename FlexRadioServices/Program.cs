@@ -3,10 +3,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
-using Flex.Smoothlake.FlexLib;
 using FlexRadioServices.Models.Ports.Network;
 using FlexRadioServices.Models.Settings;
 using FlexRadioServices.Services;
+using FlexRadioServices.Services.FlexLib;
 using FlexRadioServices.Utils;
 
 namespace FlexRadioServices
@@ -18,13 +18,6 @@ namespace FlexRadioServices
         {
             
             var builder = WebApplication.CreateBuilder(args);
-
-            if (!builder.Environment.IsEnvironment("Testing"))
-            {
-                API.IsGUI = false;
-                API.ProgramName = "FlexRadioService";
-                API.Init();
-            }
 
             ConfigureServices(builder);
 
@@ -43,6 +36,10 @@ namespace FlexRadioServices
             app.UseStatusCodePages();
 
             app.MapControllers();
+            app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+            {
+                Predicate = _ => false
+            });
             app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
             {
                 Predicate = registration => registration.Tags.Contains("ready")
@@ -58,9 +55,15 @@ namespace FlexRadioServices
             var services = builder.Services;
             services.AddRuntimeConfiguration(builder.Configuration);
             services.AddHostedService<RuntimeConfigurationDiagnosticsService>();
-            services.AddHealthChecks();
+            services.AddHealthChecks()
+                .AddCheck<FlexLibReadinessHealthCheck>("flexlib", tags: ["ready"]);
             
+            services.AddSingleton<IFlexLibApi, FlexLibApiAdapter>();
             services.AddSingleton<IFlexRadioService, FlexRadioService>();
+            services.AddSingleton<FlexRadioService>(serviceProvider =>
+                (FlexRadioService)serviceProvider.GetRequiredService<IFlexRadioService>());
+            services.AddSingleton<IReadinessState, ReadinessState>();
+            services.AddHostedService<FlexLibLifecycleService>();
             services.AddSingleton<ISliceCommandService, SliceCommandService>();
             services.AddTransient<ITcpServerClient, TcpServerClient>();
             services.AddTransient<ITcpServer, TcpServer>();

@@ -14,9 +14,13 @@ public interface IFlexRadioService
     /// <summary>Gets copied snapshots of GUI clients for a radio.</summary>
     ImmutableArray<RadioClientSnapshot> GetRadioClients(string serial);
 
-    void DisconnectSession();
-    
+    /// <summary>Connects the discovered radio identified by <paramref name="serial"/>.</summary>
+    /// <param name="serial">The serial identifier of the radio to connect.</param>
+    /// <returns><see langword="true"/> if the radio was found; otherwise, <see langword="false"/>.</returns>
     bool ConnectToRadio(string serial);
 
+    /// <summary>Disconnects the discovered radio identified by <paramref name="serial"/>.</summary>
+    /// <param name="serial">The serial identifier of the radio to disconnect.</param>
+    /// <returns><see langword="true"/> if the radio was found; otherwise, <see langword="false"/>.</returns>
     bool DisconnectRadio(string serial);
 }

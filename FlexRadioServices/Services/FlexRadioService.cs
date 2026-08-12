@@ -4,6 +4,7 @@ using Flex.Smoothlake.FlexLib;
 using FlexRadioServices.Models;
 using FlexRadioServices.Models.Radio;
 using FlexRadioServices.Models.Settings;
+using FlexRadioServices.Services.FlexLib;
 using Microsoft.Extensions.Options;
 
 namespace FlexRadioServices.Services;
@@ -14,29 +15,70 @@ namespace FlexRadioServices.Services;
 public sealed class FlexRadioService : IFlexRadioService
 {
     private readonly ILogger _logger;
+    private readonly IFlexLibApi _flexLibApi;
     private readonly object _radioLock = new();
     private readonly Dictionary<string, RadioProxy> _discoveredRadios = new(StringComparer.Ordinal);
     private readonly string _preferredRadio;
     private readonly IOptions<RadioSettings> _radioSettings;
     private RadioProxy? _connectedRadio;
+    private bool _initialized;
 
     internal event EventHandler? ConnectedRadioChanged;
 
-    public FlexRadioService(ILogger<FlexRadioService> logger, IOptions<RadioSettings> radioSettings)
+    public FlexRadioService(ILogger<FlexRadioService> logger, IOptions<RadioSettings> radioSettings, IFlexLibApi flexLibApi)
     {
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(radioSettings);
+        ArgumentNullException.ThrowIfNull(flexLibApi);
         _logger = logger;
         _radioSettings = radioSettings;
+        _flexLibApi = flexLibApi;
         _preferredRadio = radioSettings.Value.PreferredRadioIdentifier ?? string.Empty;
+    }
+
+    internal void Initialize()
+    {
         lock (_radioLock)
         {
-            foreach (var radio in API.RadioList)
+            if (_initialized)
+            {
+                return;
+            }
+
+            _flexLibApi.RadioAdded += OnRadioAdded;
+            _flexLibApi.RadioRemoved += OnRadioRemoved;
+            _initialized = true;
+            foreach (var radio in _flexLibApi.Radios)
             {
                 AddRadioLocked(radio);
             }
         }
+    }
 
-        API.RadioAdded += OnRadioAdded;
-        API.RadioRemoved += OnRadioRemoved;
+    internal void Stop()
+    {
+        EventHandler? changed;
+        lock (_radioLock)
+        {
+            if (!_initialized)
+            {
+                return;
+            }
+
+            _flexLibApi.RadioAdded -= OnRadioAdded;
+            _flexLibApi.RadioRemoved -= OnRadioRemoved;
+            _initialized = false;
+            foreach (var proxy in _discoveredRadios.Values)
+            {
+                proxy.PropertyChanged -= RadioOnPropertyChanged;
+            }
+
+            _discoveredRadios.Clear();
+            changed = _connectedRadio is null ? null : ConnectedRadioChanged;
+            _connectedRadio = null;
+        }
+
+        changed?.Invoke(this, EventArgs.Empty);
     }
 
     public ImmutableArray<RadioSnapshot> GetDiscoveredRadios()
@@ -64,8 +106,6 @@ public sealed class FlexRadioService : IFlexRadioService
                 : [];
         }
     }
-
-    public void DisconnectSession() => API.CloseSession();
 
     public bool ConnectToRadio(string serial)
     {
