@@ -1,9 +1,9 @@
 ﻿# syntax=docker/dockerfile:1.7
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS base
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 WORKDIR /src
 COPY ["FlexRadioServices/FlexRadioServices.csproj", "FlexRadioServices/"]
 
@@ -27,7 +27,7 @@ WORKDIR /app
 COPY --from=publish /app/publish .
 
 EXPOSE 8080
-
+USER $APP_UID
 ENTRYPOINT ["dotnet", "FlexRadioServices.dll"]
 
 
