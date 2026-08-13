@@ -59,9 +59,11 @@ namespace FlexRadioServices
                 .AddCheck<FlexLibReadinessHealthCheck>("flexlib", tags: ["ready"]);
             
             services.AddSingleton<IFlexLibApi, FlexLibApiAdapter>();
-            services.AddSingleton<IFlexRadioService, FlexRadioService>();
-            services.AddSingleton<FlexRadioService>(serviceProvider =>
-                (FlexRadioService)serviceProvider.GetRequiredService<IFlexRadioService>());
+            services.AddSingleton<FlexRadioService>();
+            services.AddSingleton<IFlexRadioService>(serviceProvider =>
+                serviceProvider.GetRequiredService<FlexRadioService>());
+            services.AddSingleton<IConnectedRadioCoordinator>(serviceProvider =>
+                serviceProvider.GetRequiredService<FlexRadioService>());
             services.AddSingleton<IReadinessState, ReadinessState>();
             services.AddHostedService<FlexLibLifecycleService>();
             services.AddSingleton<ISliceCommandService, SliceCommandService>();
@@ -91,7 +93,7 @@ namespace FlexRadioServices
                     services.AddSingleton<IHostedService>(x => new FlexCatPortService(portSetting, 
                         x.GetRequiredService<ITcpServer>(),
                         x.GetRequiredService<ILogger<FlexCatPortService>>(), 
-                        x.GetRequiredService<IFlexRadioService>()));
+                        x.GetRequiredService<IConnectedRadioCoordinator>()));
                 }
             }
             

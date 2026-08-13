@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 
 namespace FlexRadioServices.Services;
 
-public class RadioManagerService: ConnectedRadioServiceBase
+internal class RadioManagerService: ConnectedRadioServiceBase
 {
 
     private readonly ILogger<RadioManagerService> _logger;
@@ -13,8 +13,8 @@ public class RadioManagerService: ConnectedRadioServiceBase
     private Slice? _lastTxSlice;
     private bool _lastTxSliceMuteState;
     
-    public RadioManagerService(IFlexRadioService flexRadioService, ILogger<RadioManagerService> logger, 
-        IOptions<RadioSettings> radioSettings) : base(flexRadioService, logger)
+    public RadioManagerService(IConnectedRadioCoordinator connectedRadioCoordinator, ILogger<RadioManagerService> logger,
+        IOptions<RadioSettings> radioSettings) : base(connectedRadioCoordinator, logger)
     {
         _logger = logger;
         _radioSettings = radioSettings;

@@ -12,7 +12,7 @@ namespace FlexRadioServices.Services;
 /// <summary>
 /// Publishes radio state and meter updates through a supervised MQTT work stream.
 /// </summary>
-public sealed class MqttRadioInfoPublisher : ConnectedRadioServiceBase, IMqttRadioInfoPublisher
+internal sealed class MqttRadioInfoPublisher : ConnectedRadioServiceBase, IMqttRadioInfoPublisher
 {
     private const int StateQueueCapacity = 1024;
     private readonly ConcurrentDictionary<string, OutgoingMqttMessage> _meterMessages = new();
@@ -41,13 +41,13 @@ public sealed class MqttRadioInfoPublisher : ConnectedRadioServiceBase, IMqttRad
     /// Initializes a new instance of the <see cref="MqttRadioInfoPublisher" /> class.
     /// </summary>
     /// <param name="logger">The logger used to report publishing activity and failures.</param>
-    /// <param name="flexRadioService">The service that supplies the connected radio.</param>
+    /// <param name="connectedRadioCoordinator">The coordinator that supplies connected-radio transitions.</param>
     /// <param name="mqttClientService">The MQTT client used to publish queued messages.</param>
     public MqttRadioInfoPublisher(
         ILogger<MqttRadioInfoPublisher> logger,
-        IFlexRadioService flexRadioService,
+        IConnectedRadioCoordinator connectedRadioCoordinator,
         IMqttClientService mqttClientService)
-        : base(flexRadioService, logger)
+        : base(connectedRadioCoordinator, logger)
     {
         _logger = logger;
         _mqttClientService = mqttClientService;

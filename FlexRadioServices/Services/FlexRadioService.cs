@@ -12,7 +12,7 @@ namespace FlexRadioServices.Services;
 /// <summary>
 /// Coordinates FlexLib radio discovery and publishes copied application state.
 /// </summary>
-public sealed class FlexRadioService : IFlexRadioService
+public sealed class FlexRadioService : IFlexRadioService, IConnectedRadioCoordinator
 {
     private readonly ILogger _logger;
     private readonly IFlexLibApi _flexLibApi;
@@ -23,7 +23,13 @@ public sealed class FlexRadioService : IFlexRadioService
     private RadioProxy? _connectedRadio;
     private bool _initialized;
 
-    internal event EventHandler? ConnectedRadioChanged;
+    internal event EventHandler<ConnectedRadioTransition>? ConnectedRadioChanged;
+
+    event EventHandler<ConnectedRadioTransition>? IConnectedRadioCoordinator.ConnectedRadioChanged
+    {
+        add => ConnectedRadioChanged += value;
+        remove => ConnectedRadioChanged -= value;
+    }
 
     public FlexRadioService(ILogger<FlexRadioService> logger, IOptions<RadioSettings> radioSettings, IFlexLibApi flexLibApi)
     {
@@ -57,7 +63,8 @@ public sealed class FlexRadioService : IFlexRadioService
 
     internal void Stop()
     {
-        EventHandler? changed;
+        EventHandler<ConnectedRadioTransition>? changed;
+        ConnectedRadioTransition? transition;
         lock (_radioLock)
         {
             if (!_initialized)
@@ -74,11 +81,16 @@ public sealed class FlexRadioService : IFlexRadioService
             }
 
             _discoveredRadios.Clear();
-            changed = _connectedRadio is null ? null : ConnectedRadioChanged;
+            var previousRadio = _connectedRadio;
+            changed = previousRadio is null ? null : ConnectedRadioChanged;
             _connectedRadio = null;
+            transition = previousRadio is null ? null : new ConnectedRadioTransition(previousRadio, null);
         }
 
-        changed?.Invoke(this, EventArgs.Empty);
+        if (transition is not null)
+        {
+            changed?.Invoke(this, transition);
+        }
     }
 
     public ImmutableArray<RadioSnapshot> GetDiscoveredRadios()
@@ -135,6 +147,8 @@ public sealed class FlexRadioService : IFlexRadioService
         }
     }
 
+    RadioProxy? IConnectedRadioCoordinator.GetConnectedRadioHandle() => GetConnectedRadioHandle();
+
     internal RadioProxy? GetRadioHandle(string serial)
     {
         lock (_radioLock)
@@ -170,30 +184,39 @@ public sealed class FlexRadioService : IFlexRadioService
     {
         if (sender is not RadioProxy radio || e.PropertyName != nameof(Radio.Connected)) return;
 
-        EventHandler? changed = null;
+        EventHandler<ConnectedRadioTransition>? changed = null;
+        ConnectedRadioTransition? transition = null;
         lock (_radioLock)
         {
             if (radio.Connected && !ReferenceEquals(radio, _connectedRadio))
             {
+                var previousRadio = _connectedRadio;
                 _connectedRadio = radio;
                 var client = radio.Radio.GuiClients.FirstOrDefault();
                 if (client is not null) radio.Radio.BoundClientID = client.ClientID;
                 changed = ConnectedRadioChanged;
+                transition = new ConnectedRadioTransition(previousRadio, radio);
             }
             else if (!radio.Connected && ReferenceEquals(radio, _connectedRadio))
             {
+                var previousRadio = _connectedRadio;
                 _connectedRadio = null;
                 changed = ConnectedRadioChanged;
+                transition = new ConnectedRadioTransition(previousRadio, null);
             }
         }
 
-        changed?.Invoke(this, EventArgs.Empty);
+        if (transition is not null)
+        {
+            changed?.Invoke(this, transition);
+        }
     }
 
     private void OnRadioRemoved(Radio radio)
     {
         _logger.LogDebug("Radio removed {RadioNickname}:{RadioSerial}", radio.Nickname, radio.Serial);
-        EventHandler? changed = null;
+        EventHandler<ConnectedRadioTransition>? changed = null;
+        ConnectedRadioTransition? transition = null;
         lock (_radioLock)
         {
             var serial = radio.Serial ?? string.Empty;
@@ -201,12 +224,17 @@ public sealed class FlexRadioService : IFlexRadioService
             proxy.PropertyChanged -= RadioOnPropertyChanged;
             if (ReferenceEquals(proxy, _connectedRadio))
             {
+                var previousRadio = _connectedRadio;
                 _connectedRadio = null;
                 changed = ConnectedRadioChanged;
+                transition = new ConnectedRadioTransition(previousRadio, null);
             }
         }
 
-        changed?.Invoke(this, EventArgs.Empty);
+        if (transition is not null)
+        {
+            changed?.Invoke(this, transition);
+        }
     }
 
     private static RadioSnapshot CreateSnapshot(RadioProxy radio) => new(

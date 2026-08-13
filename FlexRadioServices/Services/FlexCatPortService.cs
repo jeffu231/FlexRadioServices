@@ -12,7 +12,7 @@ using FlexRadioServices.Utils.Slice;
 
 namespace FlexRadioServices.Services;
 
-public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, ICatCommandSink
+internal class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, ICatCommandSink
 {
     /// <summary>
     /// Defines the maximum number of complete CAT commands awaiting execution.
@@ -37,7 +37,7 @@ public class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, IC
     private bool _autoRemoveSplitSlice = false;
 
     public FlexCatPortService(PortSettings portSettings, ITcpServer tcpServer,
-        ILogger<FlexCatPortService> logger, IFlexRadioService flexRadioService) : base(flexRadioService, logger)
+        ILogger<FlexCatPortService> logger, IConnectedRadioCoordinator connectedRadioCoordinator) : base(connectedRadioCoordinator, logger)
     {
         _logger = logger;
         _portSettings = portSettings;
