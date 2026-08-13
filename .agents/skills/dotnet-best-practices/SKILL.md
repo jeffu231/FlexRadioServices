@@ -88,6 +88,7 @@ C# coding guidelines and best practices. MUST follow these rules. Use when revie
 - Throw specific exceptions with descriptive messages
 - Use try-catch blocks for expected failure scenarios
 - Use early exists with ArgumentNullException.ThrowIfNull(argument) instead of custom if (argument == null) checks.
+- Log event messages should be fragments, not sentences. Avoid a trailing period/full stop.
 
 ## Performance & Security
 
