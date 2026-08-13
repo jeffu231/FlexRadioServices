@@ -1,4 +1,19 @@
 BuildTestConsole Changelog
+<a name="2.4.2"></a>
+## [2.4.2](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v2.4.2) (2026-08-13)
+
+### Bug Fixes
+
+* **health:** Change images for simpler heath api calls ([63f3dff](https://www.github.com/jeffu231/FlexRadioServices/commit/63f3dffa7226d95bee77a43f716c76e9e08d9a8c))
+
+### Continuous Integration
+
+* Update docker login version ([ed2ac61](https://www.github.com/jeffu231/FlexRadioServices/commit/ed2ac6102a421524d1df8aaa6a3a45abc8b0ad43))
+
+### Documentation
+
+* **skill:** Enforce log event message format ([34f09df](https://www.github.com/jeffu231/FlexRadioServices/commit/34f09df208444d416baf0fff0f069a0442e0b7e5))
+
 <a name="2.4.1"></a>
 ## [2.4.1](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v2.4.1) (2026-08-12)
 
