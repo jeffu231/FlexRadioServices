@@ -31,10 +31,43 @@ settings are read once at startup. Restart the service after every
 configuration change—CAT listener and MQTT broker topology are not reloaded
 while the service is running.
 
-CAT listeners use TCP. Each listener needs a unique port, friendly name, and
-client ID. Designated listeners require a VFO A slice letter from A through H.
-MQTT is disabled when `BrokerHost` is empty; when enabled, it requires a valid
-port, client ID, root topic, and either both MQTT credentials or neither.
+CAT listeners use TCP profiles. A profile has a required, case-insensitively
+unique `ProfileName` and one or more `PortSettings`; a port number is globally
+unique across every profile, including disabled or unused profiles. Clients
+have a case-insensitively unique `ClientId`, a required friendly name, an
+`Enabled` startup flag, and one `ProfileName`. At most one enabled client can
+select a profile. Profile/client matching is case-insensitive.
+
+Only enabled clients open the TCP listeners from their selected profile. An
+unused profile, or a profile whose clients are all disabled, opens no listener.
+An enabled client that is temporarily absent from the Flex radio does not close
+its listeners. Configuration is read once at startup: changing `Enabled`, a
+profile, or a port always requires a service restart. The legacy
+`CatPorts:PortSettings` shape is rejected; unknown CAT keys also fail startup.
+
+    "CatPorts": {
+      "Profiles": [{
+        "ProfileName": "Operator",
+        "PortSettings": [{
+          "PortFriendlyName": "CAT A",
+          "PortNumber": 6005,
+          "PortSliceType": "Designated",
+          "VfoASliceLetter": "A"
+        }]
+      }],
+      "Clients": [{
+        "ClientId": "flex-gui-client-id",
+        "ClientFriendlyName": "Operator GUI",
+        "Enabled": true,
+        "ProfileName": "operator"
+      }]
+    }
+
+Use `GET /api/frs/v2/configuration/catport/settings` to inspect both the
+configured profiles/clients and the effective active listeners. Configuration
+API routes are v2-only; Radio API v1 routes remain available. MQTT is disabled
+when `BrokerHost` is empty; when enabled, it requires a valid port, client ID,
+root topic, and either both MQTT credentials or neither.
 
 ## Testing
 

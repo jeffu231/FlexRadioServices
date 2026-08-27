@@ -33,7 +33,8 @@ public sealed class OpenApiDocumentTests(OpenApiWebApplicationFactory factory)
 
         var document = result.Document ?? throw new InvalidOperationException("OpenAPI reader did not return a document.");
         Assert.Equal("1.0", document.Info.Version);
-        Assert.Contains("/api/frs/v1/configuration/version", document.Paths.Keys);
+        Assert.DoesNotContain("/api/frs/v1/configuration/version", document.Paths.Keys);
+        Assert.DoesNotContain("/api/frs/v1/configuration/catport/settings", document.Paths.Keys);
         Assert.Contains("/api/frs/v1/radio/radios", document.Paths.Keys);
     }
 
@@ -61,6 +62,33 @@ public sealed class OpenApiDocumentTests(OpenApiWebApplicationFactory factory)
         Assert.Contains("400", responses.Keys);
         Assert.Contains("404", responses.Keys);
         Assert.Contains("409", responses.Keys);
+    }
+
+    [Fact]
+    public async Task V2JsonDocument_DocumentsCatConfigurationContract()
+    {
+        var client = factory.CreateClient();
+
+        var response = await client.GetAsync("api/frs/swagger/v2/swagger.json");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var document = OpenApiDocument.Parse(
+            await response.Content.ReadAsStringAsync(),
+            "json",
+            new OpenApiReaderSettings()).Document
+            ?? throw new InvalidOperationException("OpenAPI reader did not return a document.");
+        Assert.True(document.Paths.TryGetValue("/api/frs/v2/configuration/catport/settings", out var path));
+        var pathItem = path ?? throw new InvalidOperationException("CAT configuration path was not documented.");
+        var operations = pathItem.Operations ?? throw new InvalidOperationException("CAT configuration operations were not documented.");
+        Assert.True(operations.TryGetValue(HttpMethod.Get, out var operation));
+        var getOperation = operation ?? throw new InvalidOperationException("CAT configuration GET was not documented.");
+        var responses = getOperation.Responses ?? throw new InvalidOperationException("CAT configuration responses were not documented.");
+
+        Assert.Contains("200", responses.Keys);
+        var schemas = document.Components?.Schemas ?? throw new InvalidOperationException("CAT configuration schemas were not documented.");
+        Assert.Contains("CatPortSettingsResponse", schemas.Keys);
+        Assert.Contains("ConfiguredCatPortSettingsResponse", schemas.Keys);
+        Assert.Contains("EffectiveCatPortProfileResponse", schemas.Keys);
     }
 }
 
