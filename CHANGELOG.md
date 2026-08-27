@@ -1,4 +1,22 @@
 BuildTestConsole Changelog
+<a name="3.0.0"></a>
+## [3.0.0](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v3.0.0) (2026-08-27)
+
+### Features
+
+* **API:** Add CAT configuration v2 response ([89897f1](https://www.github.com/jeffu231/FlexRadioServices/commit/89897f15a16c02c4fc0d3f77e35434d17b2c37ac))
+* **CAT:** Add profile configuration validation ([63270df](https://www.github.com/jeffu231/FlexRadioServices/commit/63270df15bcdb27f9195ff54b38a9904292a0475))
+* **CAT:** Report active profile bindings ([6917f50](https://www.github.com/jeffu231/FlexRadioServices/commit/6917f501a9acc5dfbcf62bffcdb57efdaa17a671))
+* **CAT:** Supervise configured CAT listeners ([a3bff87](https://www.github.com/jeffu231/FlexRadioServices/commit/a3bff872765b3d66ec33d4c8937f8d14d45f24c5))
+
+### Documentation
+
+* **api:** initial plan to refactor the configuration ([356110c](https://www.github.com/jeffu231/FlexRadioServices/commit/356110c0f2650e44ed1e05b0a5fa81897244d8d7))
+
+### Breaking Changes
+
+* **CAT:** Add profile configuration validation ([63270df](https://www.github.com/jeffu231/FlexRadioServices/commit/63270df15bcdb27f9195ff54b38a9904292a0475))
+
 <a name="2.4.2"></a>
 ## [2.4.2](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v2.4.2) (2026-08-13)
 
