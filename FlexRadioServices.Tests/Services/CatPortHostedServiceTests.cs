@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Net;
+using System.Net.Sockets;
 using FlexRadioServices.Models;
 using FlexRadioServices.Models.Ports;
 using FlexRadioServices.Models.Settings;
@@ -81,6 +83,28 @@ public sealed class CatPortHostedServiceTests
         Assert.Equal(1, second.StopCount);
     }
 
+    [Fact]
+    public async Task StartAsync_ActiveBinding_OpensItsTcpListenerWithoutCreatingInactiveListeners()
+    {
+        var activePort = GetAvailablePort();
+        using var inactiveReservation = new TcpListener(IPAddress.Loopback, 0);
+        inactiveReservation.Start();
+        var inactivePort = ((IPEndPoint)inactiveReservation.LocalEndpoint).Port;
+        var activeChild = new LoopbackCatPortService(activePort);
+        var factory = new TestFactory(activeChild);
+        var service = CreateHostedService([CreateBinding((ushort)activePort)], factory);
+
+        await service.StartAsync(CancellationToken.None);
+        using var client = new TcpClient();
+        await client.ConnectAsync(IPAddress.Loopback, activePort);
+
+        Assert.Single(factory.Bindings);
+        Assert.Equal((ushort)activePort, factory.Bindings[0].PortSettings.PortNumber);
+        Assert.NotEqual((ushort)inactivePort, factory.Bindings[0].PortSettings.PortNumber);
+
+        await service.StopAsync(CancellationToken.None);
+    }
+
     private static CatPortHostedService CreateHostedService(
         ImmutableArray<ResolvedCatPortBinding> bindings,
         TestFactory factory) => new(
@@ -99,6 +123,13 @@ public sealed class CatPortHostedServiceTests
             PortSliceType = PortSliceType.Active
         });
 
+    private static int GetAvailablePort()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        return ((IPEndPoint)listener.LocalEndpoint).Port;
+    }
+
     private sealed class TestConfigurationProvider(ImmutableArray<ResolvedCatPortBinding> bindings) : ICatPortConfigurationProvider
     {
         public ImmutableArray<CatPortProfileSettings> GetConfiguredProfiles() => [];
@@ -108,9 +139,9 @@ public sealed class CatPortHostedServiceTests
         public ImmutableArray<ResolvedCatPortBinding> GetActiveBindings() => bindings;
     }
 
-    private sealed class TestFactory(params TestCatPortService[] services) : ICatPortServiceFactory
+    private sealed class TestFactory(params ICatPortService[] services) : ICatPortServiceFactory
     {
-        private readonly Queue<TestCatPortService> _services = new(services);
+        private readonly Queue<ICatPortService> _services = new(services);
 
         public List<ResolvedCatPortBinding> Bindings { get; } = [];
 
@@ -145,5 +176,27 @@ public sealed class CatPortHostedServiceTests
         public void CompleteSuccessfully() => _completion.TrySetResult();
 
         public void CompleteWithException(Exception exception) => _completion.TrySetException(exception);
+    }
+
+    private sealed class LoopbackCatPortService(int port) : ICatPortService
+    {
+        private readonly TcpListener _listener = new(IPAddress.Loopback, port);
+        private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task? CompletionTask { get; private set; }
+
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            _listener.Start();
+            CompletionTask = _completion.Task;
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            _listener.Stop();
+            _completion.TrySetResult();
+            return Task.CompletedTask;
+        }
     }
 }

@@ -79,6 +79,38 @@ public sealed class CatPortConfigurationProviderTests
     }
 
     [Fact]
+    public void GetActiveBindings_SharedProfile_UsesOnlyTheEnabledClient()
+    {
+        var provider = new CatPortConfigurationProvider(Options.Create(new CatPortSettings
+        {
+            Profiles = [CreateProfile("Shared", 6101)],
+            Clients =
+            [
+                new CatClientSettings
+                {
+                    ClientId = "disabled-client",
+                    ClientFriendlyName = "Disabled Client",
+                    Enabled = false,
+                    ProfileName = "shared"
+                },
+                new CatClientSettings
+                {
+                    ClientId = "enabled-client",
+                    ClientFriendlyName = "Enabled Client",
+                    Enabled = true,
+                    ProfileName = "Shared"
+                }
+            ]
+        }));
+
+        var binding = Assert.Single(provider.GetActiveBindings());
+
+        Assert.Equal("Shared", binding.ProfileName);
+        Assert.Equal("enabled-client", binding.ClientId);
+        Assert.Equal("Enabled Client", binding.ClientFriendlyName);
+    }
+
+    [Fact]
     public void GetConfiguredProfiles_ReturnsCopiesThatCannotMutateStartupSnapshot()
     {
         var provider = new CatPortConfigurationProvider(Options.Create(new CatPortSettings
