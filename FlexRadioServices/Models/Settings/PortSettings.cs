@@ -26,11 +26,6 @@ public sealed record PortSettings
     public PortSliceType PortSliceType { get; init; }
 
     /// <summary>
-    /// Gets or sets the radio client identifier associated with this listener.
-    /// </summary>
-    public string ClientId { get; init; } = string.Empty;
-
-    /// <summary>
     /// Gets or sets the slice letter assigned to VFO A.
     /// </summary>
     public string VfoASliceLetter { get; init; } = "A";

@@ -24,7 +24,7 @@ public static class ServiceCollectionExtensions
             .ValidateDataAnnotations()
             .Services.AddSingleton<IValidateOptions<MqttBrokerSettings>, MqttBrokerSettingsValidator>();
         services.AddOptions<CatPortSettings>()
-            .Bind(configuration.GetSection(CatPortSettings.SectionName))
+            .Bind(configuration.GetSection(CatPortSettings.SectionName), options => options.ErrorOnUnknownConfiguration = true)
             .ValidateDataAnnotations()
             .Services.AddSingleton<IValidateOptions<CatPortSettings>, CatPortSettingsValidator>();
 

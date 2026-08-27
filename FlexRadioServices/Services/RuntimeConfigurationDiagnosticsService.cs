@@ -15,7 +15,9 @@ public sealed class RuntimeConfigurationDiagnosticsService(
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        var ports = string.Join(',', catPortSettings.Value.PortSettings.Select(port => port.PortNumber));
+        var ports = string.Join(',', catPortSettings.Value.Profiles
+            .SelectMany(profile => profile.PortSettings)
+            .Select(port => port.PortNumber));
         var mqttHost = string.IsNullOrWhiteSpace(mqttBrokerSettings.Value.BrokerHost)
             ? "disabled"
             : mqttBrokerSettings.Value.BrokerHost;

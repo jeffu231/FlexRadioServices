@@ -21,17 +21,49 @@ public sealed class RuntimeConfigurationOptionsTests
         var mqtt = services.GetRequiredService<IOptions<MqttBrokerSettings>>().Value;
         var radio = services.GetRequiredService<IOptions<RadioSettings>>().Value;
 
-        Assert.Equal((ushort)6005, Assert.Single(catPorts.PortSettings).PortNumber);
+        var profile = Assert.Single(catPorts.Profiles);
+        Assert.Equal("Operator", profile.ProfileName);
+        Assert.Equal((ushort)6005, Assert.Single(profile.PortSettings).PortNumber);
+        Assert.Equal("client-1", Assert.Single(catPorts.Clients).ClientId);
         Assert.Equal("mqtt.example.test", mqtt.BrokerHost);
         Assert.Equal("radio-1", radio.PreferredRadioIdentifier);
     }
 
+    [Fact]
+    public void GetCatPortOptions_EmptyConfiguration_DisablesCatWithoutValidationFailure()
+    {
+        var values = CreateValidValues();
+        foreach (var key in values.Keys.Where(key => key.StartsWith("CatPorts:", StringComparison.Ordinal)).ToArray())
+        {
+            values.Remove(key);
+        }
+
+        using var services = CreateServices(values);
+
+        var catPorts = services.GetRequiredService<IOptions<CatPortSettings>>().Value;
+
+        Assert.Empty(catPorts.Profiles);
+        Assert.Empty(catPorts.Clients);
+    }
+
+    [Fact]
+    public void GetCatPortOptions_AllClientsDisabled_BindsSuccessfully()
+    {
+        var values = CreateValidValues();
+        values["CatPorts:Clients:0:Enabled"] = "false";
+        using var services = CreateServices(values);
+
+        var client = Assert.Single(services.GetRequiredService<IOptions<CatPortSettings>>().Value.Clients);
+
+        Assert.False(client.Enabled);
+    }
+
     [Theory]
-    [InlineData("CatPorts:PortSettings:1:PortNumber", "6005", "PortNumber 6005")]
-    [InlineData("CatPorts:PortSettings:0:PortNumber", "0", "between 1 and 65535")]
-    [InlineData("CatPorts:PortSettings:0:ClientId", " ", "ClientId is required")]
-    [InlineData("CatPorts:PortSettings:0:VfoASliceLetter", "I", "VfoASliceLetter")]
-    [InlineData("CatPorts:PortSettings:0:Protocol", "UDP", "Protocol must be TCP")]
+    [InlineData("CatPorts:Profiles:1:ProfileName", "operator", "Profiles:1:ProfileName")]
+    [InlineData("CatPorts:Profiles:0:PortSettings:0:PortNumber", "0", "Profiles:0:PortSettings:0:PortNumber")]
+    [InlineData("CatPorts:Clients:0:ClientId", " ", "Clients:0:ClientId is required")]
+    [InlineData("CatPorts:Profiles:0:PortSettings:0:VfoASliceLetter", "I", "VfoASliceLetter")]
+    [InlineData("CatPorts:Profiles:0:PortSettings:0:Protocol", "UDP", "Protocol must be TCP")]
     public void GetCatPortOptions_InvalidConfiguration_Throws(string key, string value, string expectedMessage)
     {
         var values = CreateValidValues();
@@ -41,6 +73,93 @@ public sealed class RuntimeConfigurationOptionsTests
         var exception = Assert.Throws<OptionsValidationException>(() => services.GetRequiredService<IOptions<CatPortSettings>>().Value);
 
         Assert.Contains(expectedMessage, exception.Message);
+    }
+
+    [Fact]
+    public void GetCatPortOptions_MultipleFailures_AggregatesPathQualifiedFailures()
+    {
+        var values = CreateValidValues();
+        values["CatPorts:Clients:0:ClientFriendlyName"] = " ";
+        values["CatPorts:Clients:0:ProfileName"] = "missing";
+        values["CatPorts:Profiles:0:PortSettings:0:PortNumber"] = "0";
+        using var services = CreateServices(values);
+
+        var exception = Assert.Throws<OptionsValidationException>(() => services.GetRequiredService<IOptions<CatPortSettings>>().Value);
+
+        Assert.Contains("CatPorts:Clients:0:ClientFriendlyName", exception.Message);
+        Assert.Contains("CatPorts:Clients:0:ProfileName", exception.Message);
+        Assert.Contains("CatPorts:Profiles:0:PortSettings:0:PortNumber", exception.Message);
+    }
+
+    [Fact]
+    public void GetCatPortOptions_TwoEnabledClientsForProfile_Throws()
+    {
+        var values = CreateValidValues();
+        values["CatPorts:Clients:1:ClientId"] = "client-2";
+        values["CatPorts:Clients:1:ClientFriendlyName"] = "Second Client";
+        values["CatPorts:Clients:1:Enabled"] = "true";
+        values["CatPorts:Clients:1:ProfileName"] = "operator";
+        using var services = CreateServices(values);
+
+        var exception = Assert.Throws<OptionsValidationException>(() => services.GetRequiredService<IOptions<CatPortSettings>>().Value);
+
+        Assert.Contains("enabled clients for profile", exception.Message);
+    }
+
+    [Fact]
+    public void GetCatPortOptions_CaseInsensitiveDuplicateClientId_Throws()
+    {
+        var values = CreateValidValues();
+        values["CatPorts:Clients:1:ClientId"] = "CLIENT-1";
+        values["CatPorts:Clients:1:ClientFriendlyName"] = "Duplicate Client";
+        values["CatPorts:Clients:1:Enabled"] = "false";
+        values["CatPorts:Clients:1:ProfileName"] = "Operator";
+        using var services = CreateServices(values);
+
+        var exception = Assert.Throws<OptionsValidationException>(() => services.GetRequiredService<IOptions<CatPortSettings>>().Value);
+
+        Assert.Contains("CatPorts:Clients:1:ClientId", exception.Message);
+        Assert.Contains("ignoring case", exception.Message);
+    }
+
+    [Fact]
+    public void GetCatPortOptions_ProfileWithoutPorts_Throws()
+    {
+        var values = CreateValidValues();
+        values["CatPorts:Profiles:1:ProfileName"] = "Empty";
+        using var services = CreateServices(values);
+
+        var exception = Assert.Throws<OptionsValidationException>(() => services.GetRequiredService<IOptions<CatPortSettings>>().Value);
+
+        Assert.Contains("CatPorts:Profiles:1:PortSettings", exception.Message);
+    }
+
+    [Fact]
+    public void GetCatPortOptions_DuplicatePortInInactiveProfile_Throws()
+    {
+        var values = CreateValidValues();
+        values["CatPorts:Profiles:1:ProfileName"] = "Inactive";
+        values["CatPorts:Profiles:1:PortSettings:0:PortFriendlyName"] = "Inactive CAT";
+        values["CatPorts:Profiles:1:PortSettings:0:PortNumber"] = "6005";
+        values["CatPorts:Profiles:1:PortSettings:0:PortSliceType"] = "Active";
+        using var services = CreateServices(values);
+
+        var exception = Assert.Throws<OptionsValidationException>(() => services.GetRequiredService<IOptions<CatPortSettings>>().Value);
+
+        Assert.Contains("PortNumber 6005 is configured more than once", exception.Message);
+        Assert.Contains("CatPorts:Profiles:1:PortSettings:0:PortNumber", exception.Message);
+    }
+
+    [Fact]
+    public void AddRuntimeConfiguration_LegacyCatPortSettingsKey_ThrowsDuringBinding()
+    {
+        var values = CreateValidValues();
+        values["CatPorts:PortSettings:0:PortFriendlyName"] = "Legacy CAT";
+        using var services = CreateServices(values);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => services.GetRequiredService<IOptions<CatPortSettings>>().Value);
+
+        Assert.Contains("PortSettings", exception.Message);
     }
 
     [Theory]
@@ -87,11 +206,15 @@ public sealed class RuntimeConfigurationOptionsTests
         ["MqttBrokerSettings:BrokerPort"] = "1883",
         ["MqttBrokerSettings:ClientId"] = "frs",
         ["MqttBrokerSettings:RootTopic"] = "flex",
-        ["CatPorts:PortSettings:0:PortFriendlyName"] = "Test CAT",
-        ["CatPorts:PortSettings:0:PortNumber"] = "6005",
-        ["CatPorts:PortSettings:0:PortSliceType"] = "Designated",
-        ["CatPorts:PortSettings:0:ClientId"] = "client-1",
-        ["CatPorts:PortSettings:0:VfoASliceLetter"] = "A",
-        ["CatPorts:PortSettings:0:VfoBSliceLetter"] = "B"
+        ["CatPorts:Profiles:0:ProfileName"] = "Operator",
+        ["CatPorts:Profiles:0:PortSettings:0:PortFriendlyName"] = "Test CAT",
+        ["CatPorts:Profiles:0:PortSettings:0:PortNumber"] = "6005",
+        ["CatPorts:Profiles:0:PortSettings:0:PortSliceType"] = "Designated",
+        ["CatPorts:Profiles:0:PortSettings:0:VfoASliceLetter"] = "A",
+        ["CatPorts:Profiles:0:PortSettings:0:VfoBSliceLetter"] = "B",
+        ["CatPorts:Clients:0:ClientId"] = "client-1",
+        ["CatPorts:Clients:0:ClientFriendlyName"] = "Operator GUI",
+        ["CatPorts:Clients:0:Enabled"] = "true",
+        ["CatPorts:Clients:0:ProfileName"] = "operator"
     };
 }

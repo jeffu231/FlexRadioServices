@@ -11,7 +11,12 @@ public sealed record CatPortSettings
     public const string SectionName = "CatPorts";
 
     /// <summary>
-    /// Gets or sets the configured CAT TCP listeners.
+    /// Gets or sets the reusable CAT listener profiles.
     /// </summary>
-    public List<PortSettings> PortSettings { get; init; } = [];
+    public List<CatPortProfileSettings> Profiles { get; init; } = [];
+
+    /// <summary>
+    /// Gets or sets the CAT clients that select listener profiles at service startup.
+    /// </summary>
+    public List<CatClientSettings> Clients { get; init; } = [];
 }

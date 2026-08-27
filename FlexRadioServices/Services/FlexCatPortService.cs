@@ -20,6 +20,7 @@ internal class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, 
     /// </summary>
     internal const int CatCommandQueueCapacity = 256;
     private readonly PortSettings _portSettings;
+    private readonly ResolvedCatPortBinding _binding;
     private readonly ITcpServer _tcpServer;
     private readonly ILogger<FlexCatPortService> _logger;
     private readonly object _selectedSlicesLock = new();
@@ -36,11 +37,12 @@ internal class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, 
 
     private bool _autoRemoveSplitSlice = false;
 
-    public FlexCatPortService(PortSettings portSettings, ITcpServer tcpServer,
+    public FlexCatPortService(ResolvedCatPortBinding binding, ITcpServer tcpServer,
         ILogger<FlexCatPortService> logger, IConnectedRadioCoordinator connectedRadioCoordinator) : base(connectedRadioCoordinator, logger)
     {
         _logger = logger;
-        _portSettings = portSettings;
+        _binding = binding;
+        _portSettings = binding.PortSettings;
         _tcpServer = tcpServer;
         _commandQueue = Channel.CreateBounded<CatCommand>(new BoundedChannelOptions(CatCommandQueueCapacity)
         {
@@ -287,7 +289,7 @@ internal class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, 
         }
 
         var client = radio.FindGUIClientByClientHandle(slice.ClientHandle);
-        return client?.ClientID == _portSettings.ClientId;
+        return string.Equals(client?.ClientID, _binding.ClientId, StringComparison.OrdinalIgnoreCase);
     }
 
     private string GetClientId(Slice s)
@@ -310,7 +312,8 @@ internal class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, 
     {
         if (ConnectedRadio != null)
         {
-            var client = ConnectedRadio.Radio.FindGUIClientByClientID(_portSettings.ClientId);
+            var client = ConnectedRadio.Radio.GuiClients
+                .FirstOrDefault(candidate => string.Equals(candidate.ClientID, _binding.ClientId, StringComparison.OrdinalIgnoreCase));
             if (client != null)
             {
                 return client.ClientHandle;

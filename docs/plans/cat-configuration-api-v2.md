@@ -10,7 +10,7 @@ The old `CatPorts:PortSettings` configuration shape and every v1 `ConfigurationC
 
 ## Progress
 
-- [ ] Record the profile/client configuration contract, add strict binding, and implement startup validation.
+- [x] (2026-08-27 15:56Z) Replaced the flat CAT settings model with profiles and clients, added strict CAT binding, and implemented aggregated startup validation.
 - [ ] Resolve validated settings once into immutable active CAT bindings and replace direct listener registration with a supervised CAT coordinator.
 - [ ] Update CAT client matching and runtime diagnostics for profile-based bindings.
 - [ ] Replace Configuration API v1 with v2 read models and document the new configuration.
@@ -29,6 +29,9 @@ The old `CatPorts:PortSettings` configuration shape and every v1 `ConfigurationC
 
 - Observation: existing API-host tests remove all `IHostedService` registrations, so endpoint/OpenAPI tests do not start FlexLib, MQTT, or CAT TCP listeners.
   Evidence: `FlexRadioServices.Tests/OpenApi/OpenApiDocumentTests.cs` defines `OpenApiWebApplicationFactory` and calls `services.RemoveAll<IHostedService>()`.
+
+- Observation: removing `ClientId` from `PortSettings` requires an immediately usable resolved binding at the existing CAT service boundary before the provider/coordinator milestone can replace direct registrations.
+  Evidence: `FlexCatPortService` previously consumed `PortSettings.ClientId`; the first milestone adds `ResolvedCatPortBinding` and has the legacy registration loop pass it to preserve a buildable intermediate state.
 
 ## Decision Log
 
@@ -54,7 +57,7 @@ The old `CatPorts:PortSettings` configuration shape and every v1 `ConfigurationC
 
 ## Outcomes & Retrospective
 
-No implementation has started. On completion, record the exact test counts, an example validated profile/client configuration, the observed v2 response, and any coordinator startup or shutdown behavior discovered during implementation.
+The first milestone is complete. CAT configuration now binds `Profiles` and `Clients`, rejects unknown CAT keys such as the removed root `PortSettings`, and aggregates path-qualified validation failures. Focused configuration tests passed 17/17; the full release suite passed 64 tests with one opt-in hardware test skipped. Repository-wide formatting verification remains a pre-existing failure across unrelated source files and was not changed in this milestone. The next milestone must replace the temporary direct `Program.cs` binding loop with the validated singleton provider, factory, and supervised coordinator.
 
 ## Context and Orientation
 
@@ -217,4 +220,4 @@ In `FlexRadioServices/Services/ICatPortServiceFactory.cs`, define:
 
 Create one public response record per file in `FlexRadioServices/Models/Configuration/`. At a minimum the v2 endpoint needs a top-level CAT configuration response, configured container/profile/client/port records, effective profile/active-client/listener records. Use non-null immutable/read-only collections and make inactive `ActiveClient` nullable. Apply XML comments to exported C# types and public properties so generated Swagger remains understandable.
 
-Plan created 2026-08-27: translates the approved breaking CAT profile/client redesign into a startup-validated, supervisor-owned runtime topology and Configuration API v2. No implementation was performed.
+Plan created 2026-08-27 and updated 2026-08-27: the first milestone was implemented to establish the breaking profile/client schema and startup validation. The runtime coordinator, API v2, documentation, and remaining tests are intentionally pending.

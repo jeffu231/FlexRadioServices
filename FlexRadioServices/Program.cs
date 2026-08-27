@@ -82,18 +82,32 @@ namespace FlexRadioServices
             }
             services.AddHostedService<RadioManagerService>();
 
-            var portSettings = builder.Configuration
+            var catPortSettings = builder.Configuration
                 .GetSection(CatPortSettings.SectionName)
-                .Get<CatPortSettings>()?
-                .PortSettings;
-            if (portSettings != null)
+                .Get<CatPortSettings>();
+            if (catPortSettings != null)
             {
-                foreach (var portSetting in portSettings)
+                foreach (var client in catPortSettings.Clients.Where(client => client.Enabled))
                 {
-                    services.AddSingleton<IHostedService>(x => new FlexCatPortService(portSetting, 
-                        x.GetRequiredService<ITcpServer>(),
-                        x.GetRequiredService<ILogger<FlexCatPortService>>(), 
-                        x.GetRequiredService<IConnectedRadioCoordinator>()));
+                    var profile = catPortSettings.Profiles.FirstOrDefault(profile =>
+                        string.Equals(profile.ProfileName, client.ProfileName, StringComparison.OrdinalIgnoreCase));
+                    if (profile is null)
+                    {
+                        continue;
+                    }
+
+                    foreach (var portSetting in profile.PortSettings)
+                    {
+                        var binding = new ResolvedCatPortBinding(
+                            profile.ProfileName,
+                            client.ClientId,
+                            client.ClientFriendlyName,
+                            portSetting);
+                        services.AddSingleton<IHostedService>(x => new FlexCatPortService(binding,
+                            x.GetRequiredService<ITcpServer>(),
+                            x.GetRequiredService<ILogger<FlexCatPortService>>(),
+                            x.GetRequiredService<IConnectedRadioCoordinator>()));
+                    }
                 }
             }
             
