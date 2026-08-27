@@ -8,23 +8,28 @@ namespace FlexRadioServices.Services;
 /// </summary>
 public sealed class RuntimeConfigurationDiagnosticsService(
     ILogger<RuntimeConfigurationDiagnosticsService> logger,
-    IOptions<CatPortSettings> catPortSettings,
+    ICatPortConfigurationProvider catPortConfigurationProvider,
     IOptions<MqttBrokerSettings> mqttBrokerSettings,
     IOptions<RadioSettings> radioSettings) : IHostedService
 {
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        var ports = string.Join(',', catPortSettings.Value.Profiles
-            .SelectMany(profile => profile.PortSettings)
-            .Select(port => port.PortNumber));
+        var profiles = catPortConfigurationProvider.GetConfiguredProfiles();
+        var clients = catPortConfigurationProvider.GetConfiguredClients();
+        var activeBindings = catPortConfigurationProvider.GetActiveBindings();
+        var ports = activeBindings.IsEmpty
+            ? "disabled"
+            : string.Join(',', activeBindings.Select(binding => binding.PortSettings.PortNumber));
         var mqttHost = string.IsNullOrWhiteSpace(mqttBrokerSettings.Value.BrokerHost)
             ? "disabled"
             : mqttBrokerSettings.Value.BrokerHost;
 
         logger.LogInformation(
-            "Runtime configuration is loaded at startup and requires restart to change. Auto-connect: {AutoConnect}; CAT ports: {CatPorts}; MQTT host: {MqttHost}",
+            "Runtime configuration is loaded at startup and requires restart to change. Auto-connect: {AutoConnect}; configured CAT profiles: {CatProfileCount}; configured CAT clients: {CatClientCount}; active CAT ports: {CatPorts}; MQTT host: {MqttHost}",
             radioSettings.Value.AutoConnect,
+            profiles.Length,
+            clients.Length,
             ports,
             mqttHost);
         return Task.CompletedTask;

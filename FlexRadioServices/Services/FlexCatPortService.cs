@@ -40,6 +40,15 @@ internal class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, 
     /// <inheritdoc />
     public Task? CompletionTask => ExecuteTask;
 
+    /// <summary>
+    /// Determines whether a Flex client identifier belongs to a configured CAT binding.
+    /// </summary>
+    /// <param name="configuredClientId">The client identifier configured for the CAT binding.</param>
+    /// <param name="radioClientId">The client identifier reported by FlexLib.</param>
+    /// <returns><see langword="true"/> when both identifiers match without case sensitivity; otherwise, <see langword="false"/>.</returns>
+    internal static bool ClientIdsMatch(string? configuredClientId, string? radioClientId) =>
+        string.Equals(configuredClientId, radioClientId, StringComparison.OrdinalIgnoreCase);
+
     public FlexCatPortService(ResolvedCatPortBinding binding, ITcpServer tcpServer,
         ILogger<FlexCatPortService> logger, IConnectedRadioCoordinator connectedRadioCoordinator) : base(connectedRadioCoordinator, logger)
     {
@@ -292,7 +301,7 @@ internal class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, 
         }
 
         var client = radio.FindGUIClientByClientHandle(slice.ClientHandle);
-        return string.Equals(client?.ClientID, _binding.ClientId, StringComparison.OrdinalIgnoreCase);
+        return ClientIdsMatch(_binding.ClientId, client?.ClientID);
     }
 
     private string GetClientId(Slice s)
@@ -316,7 +325,7 @@ internal class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, 
         if (ConnectedRadio != null)
         {
             var client = ConnectedRadio.Radio.GuiClients
-                .FirstOrDefault(candidate => string.Equals(candidate.ClientID, _binding.ClientId, StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(candidate => ClientIdsMatch(_binding.ClientId, candidate.ClientID));
             if (client != null)
             {
                 return client.ClientHandle;
