@@ -11,7 +11,7 @@ The old `CatPorts:PortSettings` configuration shape and every v1 `ConfigurationC
 ## Progress
 
 - [x] (2026-08-27 15:56Z) Replaced the flat CAT settings model with profiles and clients, added strict CAT binding, and implemented aggregated startup validation.
-- [ ] Resolve validated settings once into immutable active CAT bindings and replace direct listener registration with a supervised CAT coordinator.
+- [x] (2026-08-27 16:14Z) Added the startup-snapshot provider, per-binding factory, and supervised CAT coordinator; removed direct CAT listener registration from `Program.cs`.
 - [ ] Update CAT client matching and runtime diagnostics for profile-based bindings.
 - [ ] Replace Configuration API v1 with v2 read models and document the new configuration.
 - [ ] Add unit, runtime, API, and OpenAPI coverage; run the complete release test suite and manually verify the HTTP and TCP behavior.
@@ -32,6 +32,9 @@ The old `CatPorts:PortSettings` configuration shape and every v1 `ConfigurationC
 
 - Observation: removing `ClientId` from `PortSettings` requires an immediately usable resolved binding at the existing CAT service boundary before the provider/coordinator milestone can replace direct registrations.
   Evidence: `FlexCatPortService` previously consumed `PortSettings.ClientId`; the first milestone adds `ResolvedCatPortBinding` and has the legacy registration loop pass it to preserve a buildable intermediate state.
+
+- Observation: `IHostedService` does not itself expose a task that reports an individual listener's background completion or fault.
+  Evidence: the CAT coordinator requires `ICatPortService.CompletionTask`, implemented by `FlexCatPortService` from `BackgroundService.ExecuteTask`, to supervise each child without an implementation cast.
 
 ## Decision Log
 
@@ -57,7 +60,7 @@ The old `CatPorts:PortSettings` configuration shape and every v1 `ConfigurationC
 
 ## Outcomes & Retrospective
 
-The first milestone is complete. CAT configuration now binds `Profiles` and `Clients`, rejects unknown CAT keys such as the removed root `PortSettings`, and aggregates path-qualified validation failures. Focused configuration tests passed 17/17; the full release suite passed 64 tests with one opt-in hardware test skipped. Repository-wide formatting verification remains a pre-existing failure across unrelated source files and was not changed in this milestone. The next milestone must replace the temporary direct `Program.cs` binding loop with the validated singleton provider, factory, and supervised coordinator.
+The first two milestones are complete. CAT configuration now binds `Profiles` and `Clients`, rejects unknown CAT keys such as the removed root `PortSettings`, and aggregates path-qualified validation failures. A singleton provider captures validated configuration once, returns defensive copies of configured data, and resolves active bindings in profile/port order without radio presence. `CatPortHostedService` is now the only CAT hosted service; it creates children through a factory, rolls them back after partial startup failure, observes unexpected completion/faults, and stops all children on application shutdown. Focused provider/coordinator tests passed 8/8; the full release suite passed 72 tests with one opt-in hardware test skipped. Repository-wide formatting verification remains a pre-existing failure across unrelated source files and was not changed in these milestones. The next milestone updates runtime diagnostics and completes focused case-insensitive CAT service coverage.
 
 ## Context and Orientation
 
@@ -220,4 +223,4 @@ In `FlexRadioServices/Services/ICatPortServiceFactory.cs`, define:
 
 Create one public response record per file in `FlexRadioServices/Models/Configuration/`. At a minimum the v2 endpoint needs a top-level CAT configuration response, configured container/profile/client/port records, effective profile/active-client/listener records. Use non-null immutable/read-only collections and make inactive `ActiveClient` nullable. Apply XML comments to exported C# types and public properties so generated Swagger remains understandable.
 
-Plan created 2026-08-27 and updated 2026-08-27: the first milestone was implemented to establish the breaking profile/client schema and startup validation. The runtime coordinator, API v2, documentation, and remaining tests are intentionally pending.
+Plan created 2026-08-27 and updated 2026-08-27: the first two milestones established the breaking profile/client schema, startup validation, resolved binding provider, and CAT lifecycle coordinator. Runtime diagnostics, API v2, documentation, and remaining integration tests are intentionally pending.

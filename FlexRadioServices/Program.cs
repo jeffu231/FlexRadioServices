@@ -69,6 +69,9 @@ namespace FlexRadioServices
             services.AddSingleton<ISliceCommandService, SliceCommandService>();
             services.AddTransient<ITcpServerClient, TcpServerClient>();
             services.AddTransient<ITcpServer, TcpServer>();
+            services.AddSingleton<ICatPortConfigurationProvider, CatPortConfigurationProvider>();
+            services.AddSingleton<ICatPortServiceFactory, CatPortServiceFactory>();
+            services.AddHostedService<CatPortHostedService>();
             
             var mqttBrokerSettings = builder.Configuration
                 .GetSection(MqttBrokerSettings.SectionName)
@@ -82,35 +85,6 @@ namespace FlexRadioServices
             }
             services.AddHostedService<RadioManagerService>();
 
-            var catPortSettings = builder.Configuration
-                .GetSection(CatPortSettings.SectionName)
-                .Get<CatPortSettings>();
-            if (catPortSettings != null)
-            {
-                foreach (var client in catPortSettings.Clients.Where(client => client.Enabled))
-                {
-                    var profile = catPortSettings.Profiles.FirstOrDefault(profile =>
-                        string.Equals(profile.ProfileName, client.ProfileName, StringComparison.OrdinalIgnoreCase));
-                    if (profile is null)
-                    {
-                        continue;
-                    }
-
-                    foreach (var portSetting in profile.PortSettings)
-                    {
-                        var binding = new ResolvedCatPortBinding(
-                            profile.ProfileName,
-                            client.ClientId,
-                            client.ClientFriendlyName,
-                            portSetting);
-                        services.AddSingleton<IHostedService>(x => new FlexCatPortService(binding,
-                            x.GetRequiredService<ITcpServer>(),
-                            x.GetRequiredService<ILogger<FlexCatPortService>>(),
-                            x.GetRequiredService<IConnectedRadioCoordinator>()));
-                    }
-                }
-            }
-            
             services.AddProblemDetails();
             
             services.AddControllers(o =>

@@ -37,6 +37,9 @@ internal class FlexCatPortService : ConnectedRadioServiceBase, ICatPortService, 
 
     private bool _autoRemoveSplitSlice = false;
 
+    /// <inheritdoc />
+    public Task? CompletionTask => ExecuteTask;
+
     public FlexCatPortService(ResolvedCatPortBinding binding, ITcpServer tcpServer,
         ILogger<FlexCatPortService> logger, IConnectedRadioCoordinator connectedRadioCoordinator) : base(connectedRadioCoordinator, logger)
     {
