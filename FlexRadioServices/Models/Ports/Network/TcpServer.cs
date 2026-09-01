@@ -10,6 +10,7 @@ namespace FlexRadioServices.Models.Ports.Network;
 /// </summary>
 public sealed class TcpServer(ILogger<TcpServer> logger, IServiceProvider serviceProvider) : ITcpServer
 {
+    private static readonly TimeSpan AcceptRetryDelay = TimeSpan.FromMilliseconds(500);
     private readonly object _lifecycleLock = new();
     private readonly ConcurrentDictionary<ITcpServerClient, byte> _clients = [];
     private readonly List<Task> _clientTasks = [];
@@ -66,6 +67,26 @@ public sealed class TcpServer(ILogger<TcpServer> logger, IServiceProvider servic
                 {
                     logger.LogDebug(exception, "Listener on port {Port} stopped while accepting", port);
                     break;
+                }
+                catch (Exception exception)
+                {
+                    // AcceptTcpClientAsync can fail transiently (e.g. resource exhaustion from
+                    // rapid client connect/reset churn) without the listener socket itself being
+                    // unusable. Letting this escape would tear down the whole listener via the
+                    // outer finally and leave the port permanently unable to accept new clients.
+                    // A short backoff keeps a persistent failure from spinning the loop and
+                    // flooding the log.
+                    logger.LogError(exception, "Error accepting a connection on port {Port}", port);
+                    try
+                    {
+                        await Task.Delay(AcceptRetryDelay, clientCancellation.Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (clientCancellation.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    continue;
                 }
 
                 var client = serviceProvider.GetRequiredService<ITcpServerClient>();
