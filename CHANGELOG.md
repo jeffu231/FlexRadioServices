@@ -1,4 +1,11 @@
 BuildTestConsole Changelog
+<a name="3.0.1"></a>
+## [3.0.1](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v3.0.1) (2026-09-01)
+
+### Bug Fixes
+
+* **tcp:** keep CAT listener alive on unexpected accept failures ([7764d6c](https://www.github.com/jeffu231/FlexRadioServices/commit/7764d6cb22d50d35bbbb188ae9ae9efb4f5c9f83))
+
 <a name="3.0.0"></a>
 ## [3.0.0](https://www.github.com/jeffu231/FlexRadioServices/releases/tag/v3.0.0) (2026-08-27)
 
